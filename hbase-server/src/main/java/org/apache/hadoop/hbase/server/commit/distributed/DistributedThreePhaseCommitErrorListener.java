@@ -17,6 +17,8 @@
  */
 package org.apache.hadoop.hbase.server.commit.distributed;
 
+import java.io.IOException;
+
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.CommitPhase;
@@ -33,8 +35,7 @@ import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedC
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public interface DistributedThreePhaseCommitErrorListener extends
-    ThreePhaseCommitErrorListenable<DistributedCommitException>,
-    DistributedCommitControllerErrorListener {
+    ThreePhaseCommitErrorListenable<DistributedCommitException> {
 
   /**
    * Notification that a remote failure caused the operation to fail.
@@ -54,4 +55,13 @@ public interface DistributedThreePhaseCommitErrorListener extends
    * @param listener listener to listen for errors
    */
   public void addErrorListener(DistributedThreePhaseCommitErrorListener listener);
+
+
+  /**
+   * Receive an error notification that the controller connection has failed, which means any
+   * further progress for any operation will not succeed.
+   * @param message general information about the failure
+   * @param cause the root cause
+   */
+  public void controllerConnectionFailure(String message, IOException cause);
 }
