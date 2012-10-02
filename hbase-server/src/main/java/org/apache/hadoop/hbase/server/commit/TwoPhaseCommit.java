@@ -71,7 +71,7 @@ import org.apache.hadoop.hbase.util.Threads;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public abstract class TwoPhaseCommit<L extends TwoPhaseCommitErrorListener<E>, E extends Exception>
+public abstract class TwoPhaseCommit<L extends ThreePhaseCommitErrorListenable<E>, E extends Exception>
     implements Callable<Void>, Runnable, TwoPhaseCommitable<E> {
 
   private static final Log LOG = LogFactory.getLog(TwoPhaseCommit.class);

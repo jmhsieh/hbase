@@ -35,7 +35,7 @@ import org.mockito.verification.VerificationMode;
 public class TestTwoPhaseCommit {
 
   private ExceptionSnare<Exception> monitor = new ExceptionSnare<Exception>();
-  private TwoPhaseCommitErrorListener listener = Mockito.mock(TwoPhaseCommitErrorListener.class);
+  private ThreePhaseCommitErrorListenable listener = Mockito.mock(ThreePhaseCommitErrorListenable.class);
   private final long wakeFrequency = 50;
 
   @After

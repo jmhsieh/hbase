@@ -19,6 +19,7 @@ package org.apache.hadoop.hbase.server.commit;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.CommitPhase;
 import org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTimeoutException;
 
 /**
@@ -27,12 +28,18 @@ import org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTi
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public interface ThreePhaseCommitErrorListenable<E extends Exception> extends
-    TwoPhaseCommitErrorListener<E> {
+public interface ThreePhaseCommitErrorListenable<E extends Exception> {
 
   /**
    * Called if the operation times out.
    * @param cause information about the exception
    */
   public void operationTimeout(OperationAttemptTimeoutException cause);
+  
+  /**
+   * The {@link TwoPhaseCommitable} operation failed at the given phase
+   * @param phase phase where the operation failed
+   * @param cause the cause of the failure
+   */
+  public void localOperationException(CommitPhase phase, E cause);
 }

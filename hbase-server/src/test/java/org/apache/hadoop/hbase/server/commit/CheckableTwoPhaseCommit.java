@@ -17,8 +17,6 @@
  */
 package org.apache.hadoop.hbase.server.commit;
 
-import org.apache.hadoop.hbase.server.commit.TwoPhaseCommit;
-import org.apache.hadoop.hbase.server.commit.TwoPhaseCommitErrorListener;
 import org.apache.hadoop.hbase.server.errorhandling.impl.ExceptionSnare;
 import org.mockito.Mockito;
 
@@ -27,19 +25,19 @@ import org.mockito.Mockito;
  * progress.
  */
 public class CheckableTwoPhaseCommit extends
-    TwoPhaseCommit<TwoPhaseCommitErrorListener<Exception>, Exception> {
+    TwoPhaseCommit<ThreePhaseCommitErrorListenable<Exception>, Exception> {
   public boolean prepared = false;
   boolean commit = false;
   boolean cleanup = false;
   boolean finish = false;
 
   public CheckableTwoPhaseCommit(ExceptionSnare<Exception> monitor,
-      TwoPhaseCommitErrorListener<Exception> errorListener, long wakeFrequency) {
+      ThreePhaseCommitErrorListenable<Exception> errorListener, long wakeFrequency) {
     super(monitor, errorListener, wakeFrequency);
   }
 
   public CheckableTwoPhaseCommit(ExceptionSnare<Exception> monitor,
-      TwoPhaseCommitErrorListener<Exception> errorListener, long wakeFrequency,
+      ThreePhaseCommitErrorListenable<Exception> errorListener, long wakeFrequency,
       int i,
       int j, int k, int l) {
     super(monitor, errorListener, wakeFrequency, i, j, k, l);
