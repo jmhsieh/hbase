@@ -25,7 +25,6 @@ import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.Commit
 import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
 import org.apache.hadoop.hbase.server.commit.ThreePhaseCommit;
 import org.apache.hadoop.hbase.server.commit.ThreePhaseCommitErrorListenable;
-import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitControllerErrorListener;
 
 /**
  * Error listener for an operation that is running a distributed {@link ThreePhaseCommit} and

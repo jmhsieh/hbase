@@ -25,7 +25,7 @@ import org.mockito.Mockito;
  * progress.
  */
 public class CheckableTwoPhaseCommit extends
-    TwoPhaseCommit<ThreePhaseCommitErrorListenable<Exception>, Exception> {
+    ThreePhaseCommit<ThreePhaseCommitErrorListenable<Exception>, Exception> {
   public boolean prepared = false;
   boolean commit = false;
   boolean cleanup = false;
@@ -40,7 +40,8 @@ public class CheckableTwoPhaseCommit extends
       ThreePhaseCommitErrorListenable<Exception> errorListener, long wakeFrequency,
       int i,
       int j, int k, int l) {
-    super(monitor, errorListener, wakeFrequency, i, j, k, l);
+    // super long timeout
+    super(monitor, errorListener, wakeFrequency, i, j, k, l, Integer.MAX_VALUE);
   }
 
   @Override

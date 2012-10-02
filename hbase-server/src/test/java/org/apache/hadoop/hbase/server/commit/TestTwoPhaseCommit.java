@@ -47,7 +47,7 @@ public class TestTwoPhaseCommit {
 
   @Test(timeout = 500)
   public void testSingleLatchCount() throws Exception {
-    TwoPhaseCommit op = Mockito.spy(new CheckableTwoPhaseCommit(monitor, listener, wakeFrequency));
+    ThreePhaseCommit op = Mockito.spy(new CheckableTwoPhaseCommit(monitor, listener, wakeFrequency));
     // start the two phase commit
     new Thread(op).start();
 
@@ -67,7 +67,7 @@ public class TestTwoPhaseCommit {
   @Test(timeout = 500)
   public void testMultipleLatchCounts() throws Exception {
     // now do a test with multiple counts for each latch
-    final TwoPhaseCommit op = Mockito.spy(new CheckableTwoPhaseCommit(monitor, listener,
+    final ThreePhaseCommit op = Mockito.spy(new CheckableTwoPhaseCommit(monitor, listener,
         wakeFrequency, 2, 2, 2, 2));
     // count down the prepared latch in the operation
     Mockito.doAnswer(new Answer<Void>() {
@@ -116,7 +116,7 @@ public class TestTwoPhaseCommit {
   public void testErrorPropagation() throws Exception {
     // use own own monitor here to not munge the rest of the test
     ExceptionSnare<Exception> monitor = new ExceptionSnare<Exception>();
-    TwoPhaseCommit tpc = Mockito.spy(new CheckableTwoPhaseCommit(monitor, listener, wakeFrequency));
+    ThreePhaseCommit tpc = Mockito.spy(new CheckableTwoPhaseCommit(monitor, listener, wakeFrequency));
     Exception cause = new Exception();
     monitor.receiveError("test before commit starts", cause);
     Thread t = new Thread(tpc);
