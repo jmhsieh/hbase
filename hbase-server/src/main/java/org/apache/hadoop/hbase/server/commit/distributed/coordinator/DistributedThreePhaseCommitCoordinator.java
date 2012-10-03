@@ -41,23 +41,26 @@ import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedC
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class DistributedThreePhaseCommitCoordinator
-    extends
-    DistributedThreePhaseCommitManager {
+public class DistributedThreePhaseCommitCoordinator {
 
   private final DistributedCommitCoordinatorController controller;
   private CoordinatorTaskBuilder builder;
-
+  private DistributedThreePhaseCommitManager manager;
+  
   public DistributedThreePhaseCommitCoordinator(String nodeName,
       long keepAliveTime,
  int opThreads,
       long wakeFrequency, DistributedCommitCoordinatorController controller,
       CoordinatorTaskBuilder builder) {
-    super(nodeName, keepAliveTime, opThreads, "commit-coordinator");
+    this.manager = new DistributedThreePhaseCommitManager(nodeName, keepAliveTime, opThreads, "commit-coordinator");
     this.controller = controller;
     setBuilder(builder);
   }
 
+  public DistributedThreePhaseCommitManager getManager() {
+    return manager;
+  }
+  
   public void setBuilder(CoordinatorTaskBuilder builder) {
     this.builder = builder;
   }
@@ -75,7 +78,7 @@ public class DistributedThreePhaseCommitCoordinator
     // build the operation
     CoordinatorTask commit = builder.buildOperation(this, operationName, operationInfo,
       expectedNodes);
-    if (this.submitOperation(commit.getErrorListener(), operationName, commit)) {
+    if (this.manager.submitOperation(commit.getErrorListener(), operationName, commit)) {
       return commit;
     }
     return null;
@@ -87,7 +90,7 @@ public class DistributedThreePhaseCommitCoordinator
    * @param node name of the node that prepared
    */
   public void prepared(String operationName, final String node) {
-    new NotifyListener(operationName) {
+    new DistributedThreePhaseCommitManager.NotifyListener(operationName, manager.getOperationsRef()) {
       @Override
       public void notifyOperation(ThreePhaseCommit task) {
         task.prepared(node);
@@ -101,7 +104,7 @@ public class DistributedThreePhaseCommitCoordinator
    * @param node name of the node that committed
    */
   public void committed(String operationName, final String node) {
-    new NotifyListener(operationName) {
+    new DistributedThreePhaseCommitManager.NotifyListener(operationName, manager.getOperationsRef()) {
       @Override
       public void notifyOperation(ThreePhaseCommit task) {
         task.committed(node);

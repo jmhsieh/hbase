@@ -89,11 +89,20 @@ public class DistributedThreePhaseCommitManager
             + ")-3PC commit-pool")));
   }
 
+  /**
+   * TODO: THIS IS A HACK until it is refactored.  We should not expose this.
+   * @return
+   */
+  public Map<String, RunningOperation> getOperationsRef() {
+    return operations;
+  }
+  
   @Override
   public void close() {
     // have to use shutdown now to break any latch waiting
     pool.shutdownNow();
   }
+
 
   /**
    * Submit an operation and all its dependent operations to be run.
@@ -105,7 +114,7 @@ public class DistributedThreePhaseCommitManager
    *         full the error monitor is also notified that the task could not be created via a
    *         {@link DistributedErrorListener#localOperationException(CommitPhase, Exception)}
    */
-  protected boolean submitOperation(DistributedErrorListener errorMonitor, String operationName, ThreePhaseCommit primary,
+  public boolean submitOperation(DistributedErrorListener errorMonitor, String operationName, ThreePhaseCommit primary,
       Callable<?>... tasks) {
     // if the submitted task was null, then we don't want to run the subtasks
     if (primary == null) return false;
@@ -171,7 +180,7 @@ public class DistributedThreePhaseCommitManager
       remote[0] = serializer.buildRemoteException(e);
     }
     // if we know about the operation, notify it
-    new NotifyListener(opName) {
+    new NotifyListener(opName, operations) {
       @Override
       protected void notifyListener(DistributedErrorListener listener) {
         listener.remoteCommitError(remote[0]);
@@ -179,7 +188,7 @@ public class DistributedThreePhaseCommitManager
     }.run();
   }
 
-  private class RunningOperation {
+  public static class RunningOperation {
     private final WeakReference<DistributedErrorListener> errorListener;
     private final WeakReference<ThreePhaseCommit> op;
 
@@ -196,7 +205,7 @@ public class DistributedThreePhaseCommitManager
   /**
    * Simple helper class to thread-safely notify listeners of a change in the operation state
    */
-  private abstract class NotifyRunner implements Runnable {
+  private abstract static class NotifyRunner implements Runnable {
 
     /**
      * Log a warning if the operation or the listener is null but the other isn't null.
@@ -276,16 +285,18 @@ public class DistributedThreePhaseCommitManager
    * Helper class to notify a single operation listeners of a change. Synchronized on the passed
    * {@link Map}.
    */
-  protected abstract class NotifyListener extends NotifyRunner {
+  public static abstract class NotifyListener extends NotifyRunner {
 
     private final String prefix;
-
+    private final Map<String, RunningOperation> operations;
+    
     /**
      * Create a notify operator to notify any listeners listening for the given operation.
      * @param operationName name of the operation to notify
      */
-    public NotifyListener(String operationName) {
+    public NotifyListener(String operationName, Map<String, RunningOperation> operations) {
       this.prefix = operationName;
+      this.operations = operations;
     }
 
     @Override

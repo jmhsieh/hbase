@@ -50,10 +50,7 @@ import org.apache.hadoop.hbase.util.Threads;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class DistributedThreePhaseCommitCohortMember
-    extends
-    DistributedThreePhaseCommitManager
-    implements Closeable {
+public class DistributedThreePhaseCommitCohortMember implements Closeable {
   private static final Log LOG = LogFactory.getLog(DistributedThreePhaseCommitCohortMember.class);
 
   // thread pool information
@@ -64,7 +61,28 @@ public class DistributedThreePhaseCommitCohortMember
   private final long wakeFrequency;
   private final RemoteExceptionSerializer serializer;
   
-  private DistributedCommitCohortMemberController controller;
+  private final DistributedCommitCohortMemberController controller;
+  private final DistributedThreePhaseCommitManager manager;
+
+//  /**
+//   * @param wakeFrequency frequency in ms to check for errors in the operation
+//   * @param keepAlive amount of time to keep alive idle worker threads
+//   * @param opThreads max number of threads to use for running operations. In reality, we will
+//   *          create 2X the number of threads since we need to also run a monitor thread for each
+//   *          running operation
+//   * @param controller controller used to send notifications to the operation coordinator
+//   * @param builder build new distributed three phase commit operations on demand
+//   * @param nodeName name of the node to use when notifying the controller that an operation has
+//   *          prepared, committed, or aborted on operation
+//   */
+//  public DistributedThreePhaseCommitCohortMember(long wakeFrequency, DistributedCommitCohortMemberController controller,
+//      CohortMemberTaskBuilder builder, String nodeName, DistributedThreePhaseCommitManager manager, RemoteExceptionSerializer res)  {
+//    this.manager = manager; // new DistributedThreePhaseCommitManager(nodeName, keepAlive, getOpThreads(opThreads), "cohort-member-" + nodeName);
+//    this.controller = controller;
+//    this.builder = builder;
+//    this.wakeFrequency = wakeFrequency;
+//    this.serializer = res;
+//  }
 
   /**
    * @param wakeFrequency frequency in ms to check for errors in the operation
@@ -80,7 +98,7 @@ public class DistributedThreePhaseCommitCohortMember
   public DistributedThreePhaseCommitCohortMember(long wakeFrequency, long keepAlive, int opThreads,
       DistributedCommitCohortMemberController controller,
       CohortMemberTaskBuilder builder, String nodeName) {
-    super(nodeName, keepAlive, getOpThreads(opThreads), "cohort-member-" + nodeName);
+    this.manager = new DistributedThreePhaseCommitManager(nodeName, keepAlive, getOpThreads(opThreads), "cohort-member-" + nodeName);
     this.controller = controller;
     this.builder = builder;
     this.wakeFrequency = wakeFrequency;
@@ -99,13 +117,17 @@ public class DistributedThreePhaseCommitCohortMember
   public DistributedThreePhaseCommitCohortMember(
       DistributedCommitCohortMemberController controller, String nodeName, ThreadPoolExecutor pool,
       CohortMemberTaskBuilder builder, long wakeFrequency) {
-    super(nodeName, pool);
+    this.manager = new DistributedThreePhaseCommitManager(nodeName, pool);
     this.controller = controller;
     this.builder = builder;
     this.wakeFrequency = wakeFrequency;
     this.serializer = new RemoteExceptionSerializer(nodeName);
   }
 
+  public DistributedThreePhaseCommitManager getManager() {
+    return manager;
+  }
+  
   /**
    * Update the number of threads to run based on hard-limits.
    * <p>
@@ -156,7 +178,7 @@ public class DistributedThreePhaseCommitCohortMember
     // make sure the listener watches for errors to running operation
     dispatcher.addErrorListener(monitor);
     LOG.debug("Submitting new operation:" + opName);
-    if (!this.submitOperation(dispatcher, opName, commit, Executors.callable(monitor))) {
+    if (!this.manager.submitOperation(dispatcher, opName, commit, Executors.callable(monitor))) {
       LOG.error("Failed to start operation:" + opName);
     }
   }
@@ -182,10 +204,9 @@ public class DistributedThreePhaseCommitCohortMember
    * @param opName name of the operation that should start running the commit phase
    */
   public void commitInitiated(String opName) {
-    new NotifyListener(opName) {
+    new DistributedThreePhaseCommitManager.NotifyListener(opName, manager.getOperationsRef()) {
       @Override
-      protected void notifyOperation(
-          ThreePhaseCommit operation) {
+      protected void notifyOperation(ThreePhaseCommit operation) {
         operation.getAllowCommitLatch().countDown();
       }
 
@@ -279,7 +300,7 @@ public class DistributedThreePhaseCommitCohortMember
         controller.abortOperation(opName, failureMessage);
       } catch (IOException e) {
         // this will fail all the running operations, since the connection is down
-        DistributedThreePhaseCommitCohortMember.this.controllerConnectionFailure(
+        DistributedThreePhaseCommitCohortMember.this.manager.controllerConnectionFailure(
           "Failed to abort operation:" + opName, e);
       }
     }
@@ -298,5 +319,10 @@ public class DistributedThreePhaseCommitCohortMember
     public void addErrorListener(DistributedErrorListener listener) {
       throw new UnsupportedOperationException("Cohort member monitor can't add listeners.");
     }
+  }
+
+  @Override
+  public void close() throws IOException {
+    manager.close();
   }
 }

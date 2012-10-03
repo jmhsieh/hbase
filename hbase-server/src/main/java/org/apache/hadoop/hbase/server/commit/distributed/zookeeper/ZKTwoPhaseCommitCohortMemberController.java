@@ -135,7 +135,7 @@ public class ZKTwoPhaseCommitCohortMemberController extends
         abort(abortNode);
       }
     } catch (KeeperException e) {
-      listener.controllerConnectionFailure("Failed to list children for abort node:"
+      listener.getManager().controllerConnectionFailure("Failed to list children for abort node:"
           + this.abortZnode, new IOException(e));
     }
   }
@@ -151,7 +151,7 @@ public class ZKTwoPhaseCommitCohortMemberController extends
         return;
       }
     } catch (KeeperException e) {
-      listener.controllerConnectionFailure("General failure when watching for new operations",
+      listener.getManager().controllerConnectionFailure("General failure when watching for new operations",
         new IOException(e));
     }
     for (String operationName : runningOperations) {
@@ -179,7 +179,7 @@ public class ZKTwoPhaseCommitCohortMemberController extends
         return;
       }
     } catch (KeeperException e) {
-      listener.controllerConnectionFailure("Failed to get the abort node (" + abortNode
+      listener.getManager().controllerConnectionFailure("Failed to get the abort node (" + abortNode
           + ") for operation:" + opName, new IOException(e));
       return;
     }
@@ -190,7 +190,7 @@ public class ZKTwoPhaseCommitCohortMemberController extends
       LOG.debug("Found data for znode:" + path);
       listener.runNewOperation(opName, data);
     } catch (KeeperException e) {
-      listener.controllerConnectionFailure("Failed to get data for new operation:" + opName,
+      listener.getManager().controllerConnectionFailure("Failed to get data for new operation:" + opName,
         new IOException(e));
     }
   }
@@ -210,7 +210,7 @@ public class ZKTwoPhaseCommitCohortMemberController extends
         passAlongCommit(commitBarrier);
       }
     } catch (KeeperException e) {
-      listener.controllerConnectionFailure("Failed to join the prepare barrier for operaton: "
+      listener.getManager().controllerConnectionFailure("Failed to join the prepare barrier for operaton: "
           + operationName + " and node: " + nodeName, new IOException(e));
     }
   }
@@ -223,7 +223,7 @@ public class ZKTwoPhaseCommitCohortMemberController extends
     try {
       ZKUtil.createAndFailSilent(watcher, joinPath);
     } catch (KeeperException e) {
-      listener.controllerConnectionFailure("Failed to post zk node:" + joinPath
+      listener.getManager().controllerConnectionFailure("Failed to post zk node:" + joinPath
           + " to join commit barrier.", new IOException(e));
     }
   }
@@ -242,7 +242,7 @@ public class ZKTwoPhaseCommitCohortMemberController extends
       // possible that we get this error for the operation if we already reset the zk state, but in
       // that case we should still get an error for that operation anyways
       logZKTree(this.baseZNode);
-      listener.controllerConnectionFailure("Failed to post zk node:" + operationAbortNode
+      listener.getManager().controllerConnectionFailure("Failed to post zk node:" + operationAbortNode
           + " to abort operation", new IOException(e));
     }
   }
@@ -256,9 +256,9 @@ public class ZKTwoPhaseCommitCohortMemberController extends
     String opName = ZKUtil.getNodeName(abortNode);
     try {
       byte[] data = ZKUtil.getData(watcher, abortNode);
-      this.listener.abortOperation(opName, data);
+      this.listener.getManager().abortOperation(opName, data);
     } catch (KeeperException e) {
-      listener.controllerConnectionFailure("Failed to get data for abort node:" + abortNode
+      listener.getManager().controllerConnectionFailure("Failed to get data for abort node:" + abortNode
           + this.abortZnode, new IOException(e));
     }
   }

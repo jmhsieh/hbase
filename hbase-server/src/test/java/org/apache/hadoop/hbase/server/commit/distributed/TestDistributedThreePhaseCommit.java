@@ -405,7 +405,7 @@ public class TestDistributedThreePhaseCommit {
       member.getFirst().close();
       member.getSecond().close();
     }
-    coordinator.close();
+    coordinator.getManager().close();
     coordinatorController.close();
   }
 

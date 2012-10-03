@@ -100,7 +100,7 @@ public class CoordinatorTask extends
       // controller setting the prepared nodes
       controller.prepareOperation(opName, data, Lists.newArrayList(this.prepareNodes));
     } catch (IOException e) {
-      parent.controllerConnectionFailure("Can't reach controller.", e);
+      parent.getManager().controllerConnectionFailure("Can't reach controller.", e);
     } catch (IllegalArgumentException e) {
       throw new DistributedCommitException(e, new byte[0]);
     }
@@ -112,7 +112,7 @@ public class CoordinatorTask extends
       // run the commit operation on the cohort
       controller.commitOperation(opName, Lists.newArrayList(this.commitingNodes));
     } catch (IOException e) {
-      parent.controllerConnectionFailure("Can't reach controller.", e);
+      parent.getManager().controllerConnectionFailure("Can't reach controller.", e);
     }
 
     // then wait for the finish latch
@@ -139,7 +139,7 @@ public class CoordinatorTask extends
     try {
       controller.resetOperation(opName);
     } catch (IOException e) {
-      parent.controllerConnectionFailure("Failed to reset operation:" + opName, e);
+      parent.getManager().controllerConnectionFailure("Failed to reset operation:" + opName, e);
     }
   }
 
