@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
 import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitCoordinatorController;
 import org.apache.hadoop.hbase.server.commit.distributed.coordinator.DistributedThreePhaseCommitCoordinator;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
@@ -37,11 +38,13 @@ import org.apache.zookeeper.KeeperException;
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public class ZKTwoPhaseCommitCoordinatorController extends
-    ZKTwoPhaseCommitController<DistributedThreePhaseCommitCoordinator> implements
+    ZKTwoPhaseCommitController implements
     DistributedCommitCoordinatorController {
 
   public static final Log LOG = LogFactory.getLog(ZKTwoPhaseCommitController.class);
 
+  protected DistributedThreePhaseCommitCoordinator listener;
+  
   /**
    * @param watcher zookeeper watcher. Owned by <tt>this</tt> and closed via {@link #close()}
    * @param operationDescription general description of the operation to use as the controlling
@@ -150,5 +153,53 @@ public class ZKTwoPhaseCommitCoordinatorController extends
         throw new IOException("Failed to complete reset operation", e);
       }
     } while (stillGettingNotifications);
+  }
+
+  /**
+   * Start monitoring nodes in ZK - subclass hook to start monitoring nodes they are about.
+   */
+  protected void start() {
+    // NOOP - used by subclasses to start monitoring things they care about
+  }
+  
+  public void start(DistributedThreePhaseCommitCoordinator listener) {
+    LOG.debug("Starting the commit controller for operation:" + this.nodeName);
+    this.listener = listener;
+    this.start();
+  }
+
+
+  @Override
+  public void abortOperation(String operationName, RemoteFailureException failureInfo) {
+    LOG.debug("Aborting operation (" + operationName + ") in zk");
+    String operationAbortNode = getAbortNode(this, operationName);
+    try {
+      LOG.debug("Creating abort node:" + operationAbortNode);
+      byte[] errorInfo = failureInfo.toByteArray();
+      // first create the znode for the operation
+      ZKUtil.createSetData(watcher, operationAbortNode, errorInfo);
+      LOG.debug("Finished creating abort node:" + operationAbortNode);
+    } catch (KeeperException e) {
+      // possible that we get this error for the operation if we already reset the zk state, but in
+      // that case we should still get an error for that operation anyways
+      logZKTree(this.baseZNode);
+      listener.controllerConnectionFailure("Failed to post zk node:" + operationAbortNode
+          + " to abort operation", new IOException(e));
+    }
+  }
+
+  /**
+   * Pass along the found abort notification to the listener
+   * @param abortNode full znode path to the failed operation information
+   */
+  protected void abort(String abortNode) {
+    String opName = ZKUtil.getNodeName(abortNode);
+    try {
+      byte[] data = ZKUtil.getData(watcher, abortNode);
+      this.listener.abortOperation(opName, data);
+    } catch (KeeperException e) {
+      listener.controllerConnectionFailure("Failed to get data for abort node:" + abortNode
+          + this.abortZnode, new IOException(e));
+    }
   }
 }

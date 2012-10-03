@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitExcept
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitManager;
 import org.apache.hadoop.hbase.server.commit.distributed.RemoteExceptionSerializer;
+import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitCoordinatorController;
 import org.apache.hadoop.hbase.server.errorhandling.ExceptionCheckable;
 import org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTimeoutException;
 import org.apache.hadoop.hbase.util.Threads;
@@ -52,7 +53,7 @@ import org.apache.hadoop.hbase.util.Threads;
 @InterfaceStability.Evolving
 public class DistributedThreePhaseCommitCohortMember
     extends
-    DistributedThreePhaseCommitManager<DistributedCommitCohortMemberController>
+    DistributedThreePhaseCommitManager
     implements CohortMemberTaskRunner, Closeable {
   private static final Log LOG = LogFactory.getLog(DistributedThreePhaseCommitCohortMember.class);
 
@@ -63,6 +64,8 @@ public class DistributedThreePhaseCommitCohortMember
   private final CohortMemberTaskBuilder builder;
   private final long wakeFrequency;
   private final RemoteExceptionSerializer serializer;
+  
+  private DistributedCommitCohortMemberController controller;
 
   /**
    * @param wakeFrequency frequency in ms to check for errors in the operation
@@ -78,7 +81,8 @@ public class DistributedThreePhaseCommitCohortMember
   public DistributedThreePhaseCommitCohortMember(long wakeFrequency, long keepAlive, int opThreads,
       DistributedCommitCohortMemberController controller,
       CohortMemberTaskBuilder builder, String nodeName) {
-    super(controller, nodeName, keepAlive, getOpThreads(opThreads), "cohort-member-" + nodeName);
+    super(nodeName, keepAlive, getOpThreads(opThreads), "cohort-member-" + nodeName);
+    this.controller = controller;
     this.builder = builder;
     this.wakeFrequency = wakeFrequency;
     this.serializer = new RemoteExceptionSerializer(nodeName);
@@ -96,7 +100,8 @@ public class DistributedThreePhaseCommitCohortMember
   public DistributedThreePhaseCommitCohortMember(
       DistributedCommitCohortMemberController controller, String nodeName, ThreadPoolExecutor pool,
       CohortMemberTaskBuilder builder, long wakeFrequency) {
-    super(controller, nodeName, pool);
+    super(nodeName, pool);
+    this.controller = controller;
     this.builder = builder;
     this.wakeFrequency = wakeFrequency;
     this.serializer = new RemoteExceptionSerializer(nodeName);

@@ -24,6 +24,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
+import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitManager;
 import org.apache.hadoop.hbase.server.commit.distributed.cohort.DistributedCommitCohortMemberController;
 import org.apache.hadoop.hbase.server.commit.distributed.cohort.DistributedThreePhaseCommitCohortMember;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
@@ -47,11 +49,13 @@ import org.apache.zookeeper.KeeperException;
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public class ZKTwoPhaseCommitCohortMemberController extends
-    ZKTwoPhaseCommitController<DistributedThreePhaseCommitCohortMember> implements
+    ZKTwoPhaseCommitController implements
     DistributedCommitCohortMemberController {
 
   private static final Log LOG = LogFactory.getLog(ZKTwoPhaseCommitCohortMemberController.class);
   private final String nodeName;
+  
+  protected DistributedThreePhaseCommitCohortMember listener;
 
   /**
    * Must call {@link #start(DistributedThreePhaseCommitCohortMember)} before this is can be used.
@@ -67,7 +71,6 @@ public class ZKTwoPhaseCommitCohortMemberController extends
     this.nodeName = nodeName;
   }
 
-  @Override
   protected void start() {
     LOG.debug("Starting the cohort controller");
     watchForAbortedOperations();
@@ -225,4 +228,46 @@ public class ZKTwoPhaseCommitCohortMemberController extends
           + " to join commit barrier.", new IOException(e));
     }
   }
+  
+  @Override
+  public void abortOperation(String operationName, RemoteFailureException failureInfo) {
+    LOG.debug("Aborting operation (" + operationName + ") in zk");
+    String operationAbortNode = getAbortNode(this, operationName);
+    try {
+      LOG.debug("Creating abort node:" + operationAbortNode);
+      byte[] errorInfo = failureInfo.toByteArray();
+      // first create the znode for the operation
+      ZKUtil.createSetData(watcher, operationAbortNode, errorInfo);
+      LOG.debug("Finished creating abort node:" + operationAbortNode);
+    } catch (KeeperException e) {
+      // possible that we get this error for the operation if we already reset the zk state, but in
+      // that case we should still get an error for that operation anyways
+      logZKTree(this.baseZNode);
+      listener.controllerConnectionFailure("Failed to post zk node:" + operationAbortNode
+          + " to abort operation", new IOException(e));
+    }
+  }
+
+
+  /**
+   * Pass along the found abort notification to the listener
+   * @param abortNode full znode path to the failed operation information
+   */
+  protected void abort(String abortNode) {
+    String opName = ZKUtil.getNodeName(abortNode);
+    try {
+      byte[] data = ZKUtil.getData(watcher, abortNode);
+      this.listener.abortOperation(opName, data);
+    } catch (KeeperException e) {
+      listener.controllerConnectionFailure("Failed to get data for abort node:" + abortNode
+          + this.abortZnode, new IOException(e));
+    }
+  }
+
+  public void start(DistributedThreePhaseCommitCohortMember listener) {
+    LOG.debug("Starting the commit controller for operation:" + this.nodeName);
+    this.listener = listener;
+    this.start();
+  }
+
 }

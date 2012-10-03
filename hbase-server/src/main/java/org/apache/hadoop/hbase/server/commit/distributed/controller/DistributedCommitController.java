@@ -24,7 +24,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
 import org.apache.hadoop.hbase.server.commit.TwoPhaseCommitable;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitManager;
 
 /**
  * Abort {@link TwoPhaseCommitable} operation through an operation controller
@@ -32,14 +31,8 @@ import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCo
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public interface DistributedCommitController<L extends DistributedThreePhaseCommitManager<?>>
+public interface DistributedCommitController
     extends Closeable {
-
-  /**
-   * Start running the controller. Must be called before running any other operations
-   * @param manager manage progress for the operation - listen for errors, state change,etc.
-   */
-  public void start(L manager);
 
   /**
    * Notify the coordinator that we aborted the operation locally

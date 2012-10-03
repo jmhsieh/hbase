@@ -25,8 +25,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitManager;
 import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitController;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
@@ -40,8 +38,8 @@ import org.apache.zookeeper.KeeperException;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class ZKTwoPhaseCommitController<L extends DistributedThreePhaseCommitManager<?>>
-    extends ZooKeeperListener implements Closeable, DistributedCommitController<L> {
+public abstract class ZKTwoPhaseCommitController
+    extends ZooKeeperListener implements Closeable, DistributedCommitController {
 
   private static final Log LOG = LogFactory.getLog(ZKTwoPhaseCommitController.class);
 
@@ -55,7 +53,6 @@ public class ZKTwoPhaseCommitController<L extends DistributedThreePhaseCommitMan
   protected final String abortZnode;
 
   protected final String nodeName;
-  protected L listener;
 
   /*
    * Layout of zk is
@@ -102,42 +99,9 @@ public class ZKTwoPhaseCommitController<L extends DistributedThreePhaseCommitMan
   }
 
   @Override
-  public final void start(L listener) {
-    LOG.debug("Starting the commit controller for operation:" + this.nodeName);
-    this.listener = listener;
-    this.start();
-  }
-
-  /**
-   * Start monitoring nodes in ZK - subclass hook to start monitoring nodes they are about.
-   */
-  protected void start() {
-    // NOOP - used by subclasses to start monitoring things they care about
-  }
-
-  @Override
   public void close() throws IOException {
     if (watcher != null) {
       watcher.close();
-    }
-  }
-
-  @Override
-  public void abortOperation(String operationName, RemoteFailureException failureInfo) {
-    LOG.debug("Aborting operation (" + operationName + ") in zk");
-    String operationAbortNode = getAbortNode(this, operationName);
-    try {
-      LOG.debug("Creating abort node:" + operationAbortNode);
-      byte[] errorInfo = failureInfo.toByteArray();
-      // first create the znode for the operation
-      ZKUtil.createSetData(watcher, operationAbortNode, errorInfo);
-      LOG.debug("Finished creating abort node:" + operationAbortNode);
-    } catch (KeeperException e) {
-      // possible that we get this error for the operation if we already reset the zk state, but in
-      // that case we should still get an error for that operation anyways
-      logZKTree(this.baseZNode);
-      listener.controllerConnectionFailure("Failed to post zk node:" + operationAbortNode
-          + " to abort operation", new IOException(e));
     }
   }
 
@@ -148,7 +112,7 @@ public class ZKTwoPhaseCommitController<L extends DistributedThreePhaseCommitMan
    * @param opInstanceName name of the running operation instance (not the operation description).
    * @return full znode path to the prepare barrier/start node
    */
-  public static String getPrepareBarrierNode(ZKTwoPhaseCommitController<?> controller,
+  public static String getPrepareBarrierNode(ZKTwoPhaseCommitController controller,
       String opInstanceName) {
     return ZKUtil.joinZNode(controller.prepareBarrier, opInstanceName);
   }
@@ -159,7 +123,7 @@ public class ZKTwoPhaseCommitController<L extends DistributedThreePhaseCommitMan
    * @param opInstanceName name of the running operation instance (not the operation description).
    * @return full znode path to the commit barrier
    */
-  public static String getCommitBarrierNode(ZKTwoPhaseCommitController<?> controller,
+  public static String getCommitBarrierNode(ZKTwoPhaseCommitController controller,
       String opInstanceName) {
     return ZKUtil.joinZNode(controller.commitBarrier, opInstanceName);
   }
@@ -170,23 +134,8 @@ public class ZKTwoPhaseCommitController<L extends DistributedThreePhaseCommitMan
    * @param opInstanceName name of the running operation instance (not the operation description).
    * @return full znode path to the abort znode
    */
-  public static String getAbortNode(ZKTwoPhaseCommitController<?> controller, String opInstanceName) {
+  public static String getAbortNode(ZKTwoPhaseCommitController controller, String opInstanceName) {
     return ZKUtil.joinZNode(controller.abortZnode, opInstanceName);
-  }
-
-  /**
-   * Pass along the found abort notification to the listener
-   * @param abortNode full znode path to the failed operation information
-   */
-  protected void abort(String abortNode) {
-    String opName = ZKUtil.getNodeName(abortNode);
-    try {
-      byte[] data = ZKUtil.getData(watcher, abortNode);
-      this.listener.abortOperation(opName, data);
-    } catch (KeeperException e) {
-      listener.controllerConnectionFailure("Failed to get data for abort node:" + abortNode
-          + this.abortZnode, new IOException(e));
-    }
   }
 
   // --------------------------------------------------------------------------

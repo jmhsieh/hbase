@@ -31,7 +31,7 @@ import org.apache.hadoop.hbase.server.commit.distributed.coordinator.Distributed
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public interface DistributedCommitCoordinatorController extends
-    DistributedCommitController<DistributedThreePhaseCommitCoordinator> {
+    DistributedCommitController {
 
   /**
    * Start the two phase commit

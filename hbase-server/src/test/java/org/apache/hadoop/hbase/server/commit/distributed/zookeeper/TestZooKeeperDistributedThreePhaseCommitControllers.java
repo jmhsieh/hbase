@@ -314,7 +314,7 @@ public class TestZooKeeperDistributedThreePhaseCommitControllers {
    * Verify that the prepare, commit and abort nodes for the operation are removed from zookeeper
    */
   private void verifyZooKeeperClean(String operationName, ZooKeeperWatcher watcher,
-      ZKTwoPhaseCommitController<?> controller) throws Exception {
+      ZKTwoPhaseCommitController controller) throws Exception {
     String prepare = ZKTwoPhaseCommitController.getPrepareBarrierNode(controller, operationName);
     String commit = ZKTwoPhaseCommitController.getCommitBarrierNode(controller, operationName);
     String abort = ZKTwoPhaseCommitController.getAbortNode(controller, operationName);

@@ -22,7 +22,6 @@ import java.io.IOException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.server.commit.TwoPhaseCommitable;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException;
 import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitController;
 
 /**
@@ -33,7 +32,7 @@ import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedC
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public interface DistributedCommitCohortMemberController
-    extends DistributedCommitController<DistributedThreePhaseCommitCohortMember> {
+    extends DistributedCommitController {
 
   /**
    * Notify the coordinator that we have prepared to commit

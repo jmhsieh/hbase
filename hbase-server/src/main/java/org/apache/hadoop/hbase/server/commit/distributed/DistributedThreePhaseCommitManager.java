@@ -41,7 +41,6 @@ import org.apache.hadoop.hbase.DaemonThreadFactory;
 import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.CommitPhase;
 import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
 import org.apache.hadoop.hbase.server.commit.ThreePhaseCommit;
-import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitController;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -53,12 +52,11 @@ import com.google.protobuf.InvalidProtocolBufferException;
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class DistributedThreePhaseCommitManager<C extends DistributedCommitController<?>>
+public class DistributedThreePhaseCommitManager
     implements Closeable {
   private static final Log LOG = LogFactory.getLog(DistributedThreePhaseCommitManager.class);
   private final Map<String, RunningOperation> operations = new HashMap<String, RunningOperation>();
   private final ExecutorService pool;
-  protected final C controller;
   protected final RemoteExceptionSerializer serializer;
 
   /**
@@ -69,8 +67,7 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
    * @param nodeName name of the node
    * @param pool thread pool to which new tasks are submitted
    */
-  public DistributedThreePhaseCommitManager(C controller, String nodeName, ThreadPoolExecutor pool) {
-    this.controller = controller;
+  public DistributedThreePhaseCommitManager(String nodeName, ThreadPoolExecutor pool) {
     this.serializer = new RemoteExceptionSerializer(nodeName);
     this.pool = pool;
   }
@@ -84,9 +81,9 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
    * @param opThreads number of threads that should be used for running tasks
    * @param poolName prefix name that should be used for the pool
    */
-  public DistributedThreePhaseCommitManager(C controller, String nodeName, long keepAliveTime,
+  public DistributedThreePhaseCommitManager(String nodeName, long keepAliveTime,
       int opThreads, String poolName) {
-    this(controller, nodeName, new ThreadPoolExecutor(0, opThreads, keepAliveTime,
+    this(nodeName, new ThreadPoolExecutor(0, opThreads, keepAliveTime,
         TimeUnit.SECONDS,
         new SynchronousQueue<Runnable>(), new DaemonThreadFactory("(" + poolName
             + ")-3PC commit-pool")));
