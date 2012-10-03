@@ -17,10 +17,12 @@
  */
 package org.apache.hadoop.hbase.server.commit.distributed.cohort;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
 import org.apache.hadoop.hbase.server.commit.TwoPhaseCommitable;
 import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitController;
 
@@ -32,8 +34,17 @@ import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedC
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public interface DistributedCommitCohortMemberController
-    extends DistributedCommitController {
+    extends Closeable {
 
+  /**
+   * Notify the coordinator that we aborted the operation locally
+   * @param operationName name of the operation that was aborted
+   * @param cause the reason why the operation needs to be aborted
+   * @throws IOException if the controller can't reach the other members of the operation (and can't
+   *           recover).
+   */
+  public void abortOperation(String operationName, RemoteFailureException cause) throws IOException;
+  
   /**
    * Notify the coordinator that we have prepared to commit
    * @param operationName name of the operation to update
