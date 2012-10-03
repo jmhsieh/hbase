@@ -21,8 +21,6 @@ import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.server.commit.ThreePhaseCommit;
 import org.apache.hadoop.hbase.server.commit.TwoPhaseCommitable;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
 
 /**
  * Task builder to build cohort tasks for a {@link CohortMemberTaskRunner}. This is delegated to

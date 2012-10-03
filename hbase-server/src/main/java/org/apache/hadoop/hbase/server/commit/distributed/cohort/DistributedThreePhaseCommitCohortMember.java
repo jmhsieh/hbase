@@ -35,7 +35,6 @@ import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitExcept
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitManager;
 import org.apache.hadoop.hbase.server.commit.distributed.RemoteExceptionSerializer;
-import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitCoordinatorController;
 import org.apache.hadoop.hbase.server.errorhandling.ExceptionCheckable;
 import org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTimeoutException;
 import org.apache.hadoop.hbase.util.Threads;
@@ -54,7 +53,7 @@ import org.apache.hadoop.hbase.util.Threads;
 public class DistributedThreePhaseCommitCohortMember
     extends
     DistributedThreePhaseCommitManager
-    implements CohortMemberTaskRunner, Closeable {
+    implements Closeable {
   private static final Log LOG = LogFactory.getLog(DistributedThreePhaseCommitCohortMember.class);
 
   // thread pool information
@@ -137,7 +136,6 @@ public class DistributedThreePhaseCommitCohortMember
     return threads;
   }
 
-  @Override
   public void runNewOperation(String opName, byte[] data) {
     // build a new operation
     ThreePhaseCommit commit = null;

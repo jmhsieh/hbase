@@ -25,7 +25,6 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitManager;
 import org.apache.hadoop.hbase.server.commit.distributed.cohort.DistributedCommitCohortMemberController;
 import org.apache.hadoop.hbase.server.commit.distributed.cohort.DistributedThreePhaseCommitCohortMember;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
