@@ -32,7 +32,7 @@ import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCo
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public interface DistributedCommitController<L extends DistributedThreePhaseCommitManager<?, ?, ?>>
+public interface DistributedCommitController<L extends DistributedThreePhaseCommitManager<?, ?>>
     extends Closeable {
 
   /**

@@ -42,7 +42,7 @@ import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedC
 @InterfaceStability.Evolving
 public class DistributedThreePhaseCommitCoordinator
     extends
-    DistributedThreePhaseCommitManager<DistributedCommitCoordinatorController, CoordinatorTask, DistributedThreePhaseCommitErrorDispatcher> {
+    DistributedThreePhaseCommitManager<DistributedCommitCoordinatorController, CoordinatorTask> {
 
   private final DistributedCommitCoordinatorController controller;
   private CoordinatorTaskBuilder builder;

@@ -40,7 +40,7 @@ import org.apache.zookeeper.KeeperException;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class ZKTwoPhaseCommitController<L extends DistributedThreePhaseCommitManager<?, ?, ?>>
+public class ZKTwoPhaseCommitController<L extends DistributedThreePhaseCommitManager<?, ?>>
     extends ZooKeeperListener implements Closeable, DistributedCommitController<L> {
 
   private static final Log LOG = LogFactory.getLog(ZKTwoPhaseCommitController.class);

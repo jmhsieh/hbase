@@ -53,8 +53,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-// L is unused
-public class DistributedThreePhaseCommitManager<C extends DistributedCommitController<?>, T extends Callable<?>, L>
+public class DistributedThreePhaseCommitManager<C extends DistributedCommitController<?>, T extends Callable<?>>
     implements Closeable {
   private static final Log LOG = LogFactory.getLog(DistributedThreePhaseCommitManager.class);
   private final Map<String, RunningOperation> operations = new HashMap<String, RunningOperation>();
