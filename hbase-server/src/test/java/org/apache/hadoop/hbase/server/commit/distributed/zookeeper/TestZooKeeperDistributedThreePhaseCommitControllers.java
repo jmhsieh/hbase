@@ -112,13 +112,13 @@ public class TestZooKeeperDistributedThreePhaseCommitControllers {
     controller.start(member);
 
     // set a prepare node from a 'coordinator'
-    String prepare = ZKTwoPhaseCommitController.getPrepareBarrierNode(controller.getZkController(), operationName);
+    String prepare = ZKCommitUtil.getPrepareBarrierNode(controller.getZkController(), operationName);
     ZKUtil.createSetData(watcher, prepare, data);
     // wait for the operation to be prepared
     prepared.await();
 
     // create the commit node so we update the operation to enter the commit phase
-    String commit = ZKTwoPhaseCommitController.getCommitBarrierNode(controller.getZkController(), operationName);
+    String commit = ZKCommitUtil.getCommitBarrierNode(controller.getZkController(), operationName);
     LOG.debug("Found prepared, posting commit node:" + commit);
     ZKUtil.createAndFailSilent(watcher, commit);
     LOG.debug("Commit node:" + commit + ", exists:" + ZKUtil.checkExists(watcher, commit));
@@ -319,10 +319,10 @@ public class TestZooKeeperDistributedThreePhaseCommitControllers {
    * Verify that the prepare, commit and abort nodes for the operation are removed from zookeeper
    */
   private void verifyZooKeeperClean(String operationName, ZooKeeperWatcher watcher,
-      ZKTwoPhaseCommitController controller) throws Exception {
-    String prepare = ZKTwoPhaseCommitController.getPrepareBarrierNode(controller, operationName);
-    String commit = ZKTwoPhaseCommitController.getCommitBarrierNode(controller, operationName);
-    String abort = ZKTwoPhaseCommitController.getAbortNode(controller, operationName);
+      ZKCommitUtil controller) throws Exception {
+    String prepare = ZKCommitUtil.getPrepareBarrierNode(controller, operationName);
+    String commit = ZKCommitUtil.getCommitBarrierNode(controller, operationName);
+    String abort = ZKCommitUtil.getAbortNode(controller, operationName);
     assertEquals("Didn't delete prepare node", -1, ZKUtil.checkExists(watcher, prepare));
     assertEquals("Didn't delete commit node", -1, ZKUtil.checkExists(watcher, commit));
     assertEquals("Didn't delete abort node", -1, ZKUtil.checkExists(watcher, abort));

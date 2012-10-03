@@ -39,9 +39,9 @@ import org.apache.zookeeper.KeeperException;
 @InterfaceStability.Evolving
 public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitCoordinatorController {
 
-  public static final Log LOG = LogFactory.getLog(ZKTwoPhaseCommitController.class);
+  public static final Log LOG = LogFactory.getLog(ZKCommitUtil.class);
 
-  private ZKTwoPhaseCommitController zkController;
+  private ZKCommitUtil zkController;
   protected final DistributedThreePhaseCommitCoordinator listener;
   
   /**
@@ -54,7 +54,7 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
   public ZKTwoPhaseCommitCoordinatorController(DistributedThreePhaseCommitCoordinator l, ZooKeeperWatcher watcher,
       String operationDescription, String nodeName) throws KeeperException {
     this.listener = l;
-    this.zkController = new ZKTwoPhaseCommitController(watcher, operationDescription, nodeName) {
+    this.zkController = new ZKCommitUtil(watcher, operationDescription, nodeName) {
       @Override
       public void nodeCreated(String path) {
         if (!path.startsWith(baseZNode)) return;
@@ -212,7 +212,7 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
     zkController.close();
   }
 
-  public ZKTwoPhaseCommitController getZkController() {
+  public ZKCommitUtil getZkController() {
     return zkController;
   }
 }

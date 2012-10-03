@@ -54,7 +54,7 @@ public class ZKTwoPhaseCommitCohortMemberController
   private final String nodeName;
   
   protected DistributedThreePhaseCommitCohortMember listener;
-  private ZKTwoPhaseCommitController zkController; 
+  private ZKCommitUtil zkController; 
 
   
   /**
@@ -67,7 +67,7 @@ public class ZKTwoPhaseCommitCohortMemberController
    */
   public <T> ZKTwoPhaseCommitCohortMemberController(ZooKeeperWatcher watcher,
       String operationDescription, String nodeName) throws KeeperException {
-    this.zkController = new ZKTwoPhaseCommitController(zkController.getWatcher(), operationDescription, nodeName) {
+    this.zkController = new ZKCommitUtil(zkController.getWatcher(), operationDescription, nodeName) {
       @Override
       public void nodeCreated(String path) {
         if (path.startsWith(this.baseZNode)) {
@@ -111,7 +111,7 @@ public class ZKTwoPhaseCommitCohortMemberController
     this.nodeName = nodeName;
   }
 
-  public ZKTwoPhaseCommitController getZkController() {
+  public ZKCommitUtil getZkController() {
     return zkController;
   }
   
@@ -208,7 +208,7 @@ public class ZKTwoPhaseCommitCohortMemberController
     try {
       LOG.debug("Node: '" + nodeName + "' joining prepared barrier for operation (" + operationName
           + ") in zk");
-      String prepared = ZKUtil.joinZNode(ZKTwoPhaseCommitController.getPrepareBarrierNode(zkController, operationName), nodeName);
+      String prepared = ZKUtil.joinZNode(ZKCommitUtil.getPrepareBarrierNode(zkController, operationName), nodeName);
       ZKUtil.createAndFailSilent(zkController.getWatcher(), prepared);
 
       // watch for the complete node for this snapshot

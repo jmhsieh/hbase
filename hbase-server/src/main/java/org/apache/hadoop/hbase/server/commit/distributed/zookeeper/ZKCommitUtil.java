@@ -37,10 +37,10 @@ import org.apache.zookeeper.KeeperException;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public abstract class ZKTwoPhaseCommitController
+public abstract class ZKCommitUtil
     extends ZooKeeperListener implements Closeable {
 
-  private static final Log LOG = LogFactory.getLog(ZKTwoPhaseCommitController.class);
+  private static final Log LOG = LogFactory.getLog(ZKCommitUtil.class);
 
   public static final String START_BARRIER_ZNODE = "prepare";
   public static final String END_BARRIER_ZNODE = "commit";
@@ -77,7 +77,7 @@ public abstract class ZKTwoPhaseCommitController
    * @param nodeName name of the node from which we are interacting with running operations
    * @throws KeeperException when the operation znodes cannot be created
    */
-  public ZKTwoPhaseCommitController(ZooKeeperWatcher watcher, String operationDescription,
+  public ZKCommitUtil(ZooKeeperWatcher watcher, String operationDescription,
       String nodeName) throws KeeperException {
     super(watcher);
     this.nodeName = nodeName;
@@ -105,15 +105,15 @@ public abstract class ZKTwoPhaseCommitController
   }
 
   public String getPrepareBarrierNode(String opInstanceName) {
-    return ZKTwoPhaseCommitController.getPrepareBarrierNode(this, opInstanceName);
+    return ZKCommitUtil.getPrepareBarrierNode(this, opInstanceName);
   }
 
   public String getCommitBarrierNode(String opInstanceName) {
-    return ZKTwoPhaseCommitController.getCommitBarrierNode(this, opInstanceName);
+    return ZKCommitUtil.getCommitBarrierNode(this, opInstanceName);
   }
 
   public String getAbortNode(String opInstanceName) {
-    return ZKTwoPhaseCommitController.getAbortNode(this, opInstanceName);
+    return ZKCommitUtil.getAbortNode(this, opInstanceName);
   }
 
   public String getAbortZnode() {
@@ -131,7 +131,7 @@ public abstract class ZKTwoPhaseCommitController
    * @param opInstanceName name of the running operation instance (not the operation description).
    * @return full znode path to the prepare barrier/start node
    */
-  public static String getPrepareBarrierNode(ZKTwoPhaseCommitController controller,
+  public static String getPrepareBarrierNode(ZKCommitUtil controller,
       String opInstanceName) {
     return ZKUtil.joinZNode(controller.prepareBarrier, opInstanceName);
   }
@@ -142,7 +142,7 @@ public abstract class ZKTwoPhaseCommitController
    * @param opInstanceName name of the running operation instance (not the operation description).
    * @return full znode path to the commit barrier
    */
-  public static String getCommitBarrierNode(ZKTwoPhaseCommitController controller,
+  public static String getCommitBarrierNode(ZKCommitUtil controller,
       String opInstanceName) {
     return ZKUtil.joinZNode(controller.commitBarrier, opInstanceName);
   }
@@ -153,7 +153,7 @@ public abstract class ZKTwoPhaseCommitController
    * @param opInstanceName name of the running operation instance (not the operation description).
    * @return full znode path to the abort znode
    */
-  public static String getAbortNode(ZKTwoPhaseCommitController controller, String opInstanceName) {
+  public static String getAbortNode(ZKCommitUtil controller, String opInstanceName) {
     return ZKUtil.joinZNode(controller.abortZnode, opInstanceName);
   }
   
