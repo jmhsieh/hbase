@@ -76,7 +76,7 @@ public class DistributedThreePhaseCommitErrorDispatcher
   }
 
   @Override
-  public void localOperationException(CommitPhase phase, DistributedCommitException cause) {
+  public void localOperationException(CommitPhase phase, Exception cause) {
     this.receiveError("Got an general operation failure!",
       DistributedThreePhaseCommitErrorDispatcher.wrap(cause), phase);
   }

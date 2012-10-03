@@ -70,9 +70,12 @@ public class RemoteExceptionSerializer {
    * @return a {@link RemoteFailureException} to pass to other nodes
    */
   public RemoteFailureException buildRemoteException(CommitPhase phase,
-      DistributedCommitException cause) {
-    GenericExceptionMessage payload = buildGenericMessage(phase, cause);
-    return buildRemoteFailureException(payload);
+      Exception cause) {
+    // TODO hack on cause -- Need to revisit these mechanisms
+    GenericExceptionMessage payload = buildGenericMessage(cause, null);
+    RemoteFailureException.Builder exception = RemoteFailureException.newBuilder();
+    exception.setGenericException(payload);
+    return exception.setSource(nodeName).build();
   }
 
   /**
@@ -86,23 +89,15 @@ public class RemoteExceptionSerializer {
     GenericExceptionMessage payload = buildGenericMessage(localException, null);
     byte[] phase = Bytes.toBytes((int) -1);
     payload = buildGenericMessage(phase, payload);
-    return buildRemoteFailureException(payload);
-  }
-
-  /**
-   * @param payload {@link GenericExceptionMessage} message to pass along
-   * @return a {@link RemoteFailureException} to pass to other nodes
-   */
-  private RemoteFailureException buildRemoteFailureException(GenericExceptionMessage payload) {
     RemoteFailureException.Builder exception = RemoteFailureException.newBuilder();
     exception.setGenericException(payload);
-    return finish(exception, nodeName);
+    return exception.setSource(nodeName).build();
   }
 
   private static GenericExceptionMessage buildGenericMessage(byte[] phase,
       GenericExceptionMessage cause) {
     ByteString bytes = cause.toByteString();
-    // copy in the bytes for each into the new byte paylod
+    // copy in the bytes for each into the new byte payload
     byte[] data = new byte[phase.length + bytes.size()];
     System.arraycopy(phase, 0, data, 0, phase.length);
     bytes.copyTo(data, phase.length);
@@ -161,7 +156,7 @@ public class RemoteExceptionSerializer {
         .setAllowed(cause.getMaxAllowedOperationTime()).setStart(cause.getStart())
         .setEnd(cause.getEnd()).build();
     builder.setTimeout(timeout);
-    return finish(builder, sourceNodeName);
+    return builder.setSource(sourceNodeName).build();
   }
 
   /**
@@ -185,17 +180,6 @@ public class RemoteExceptionSerializer {
       pbTrace.add(stackBuilder.build());
     }
     return pbTrace;
-  }
-
-  /**
-   * Simple helper method to set the common parameters for a {@link RemoteFailureException}
-   * @param builder builder for the {@link RemoteFailureException} to pass to other nodes
-   * @param nodeName name of the source node that wants to throw the error
-   * @return a {@link RemoteFailureException} that can be passed to other nodes in the operation
-   */
-  private static RemoteFailureException finish(RemoteFailureException.Builder builder,
-      String nodeName) {
-    return builder.setSource(nodeName).build();
   }
 
   /**

@@ -256,7 +256,7 @@ public class DistributedThreePhaseCommitCohortMember
     }
 
     @Override
-    public void localOperationException(CommitPhase phase, DistributedCommitException cause) {
+    public void localOperationException(CommitPhase phase, Exception cause) {
       LOG.error("Got a local opeation error, notifying controller");
       abort(serializer.buildRemoteException(phase, cause));
     }

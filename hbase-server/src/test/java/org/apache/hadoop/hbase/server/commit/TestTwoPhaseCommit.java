@@ -18,6 +18,8 @@ import static org.mockito.Mockito.verify;
 
 import org.apache.hadoop.hbase.SmallTests;
 import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.CommitPhase;
+import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException;
+import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitErrorListener;
 import org.apache.hadoop.hbase.server.errorhandling.impl.ExceptionSnare;
 import org.junit.After;
 import org.junit.Test;
@@ -35,7 +37,7 @@ import org.mockito.verification.VerificationMode;
 public class TestTwoPhaseCommit {
 
   private ExceptionSnare<Exception> monitor = new ExceptionSnare<Exception>();
-  private ThreePhaseCommitErrorListenable listener = Mockito.mock(ThreePhaseCommitErrorListenable.class);
+  private DistributedThreePhaseCommitErrorListener listener = Mockito.mock(DistributedThreePhaseCommitErrorListener.class);
   private final long wakeFrequency = 50;
 
   @After
@@ -117,7 +119,7 @@ public class TestTwoPhaseCommit {
     // use own own monitor here to not munge the rest of the test
     ExceptionSnare<Exception> monitor = new ExceptionSnare<Exception>();
     ThreePhaseCommit tpc = Mockito.spy(new CheckableTwoPhaseCommit(monitor, listener, wakeFrequency));
-    Exception cause = new Exception();
+    DistributedCommitException cause = new DistributedCommitException("Example DCE");
     monitor.receiveError("test before commit starts", cause);
     Thread t = new Thread(tpc);
     t.start();

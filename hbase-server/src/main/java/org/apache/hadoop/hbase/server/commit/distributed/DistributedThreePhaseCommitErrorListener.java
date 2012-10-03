@@ -24,7 +24,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.CommitPhase;
 import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
 import org.apache.hadoop.hbase.server.commit.ThreePhaseCommit;
-import org.apache.hadoop.hbase.server.commit.ThreePhaseCommitErrorListenable;
+import org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTimeoutException;
 
 /**
  * Error listener for an operation that is running a distributed {@link ThreePhaseCommit} and
@@ -33,8 +33,7 @@ import org.apache.hadoop.hbase.server.commit.ThreePhaseCommitErrorListenable;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public interface DistributedThreePhaseCommitErrorListener extends
-    ThreePhaseCommitErrorListenable<DistributedCommitException> {
+public interface DistributedThreePhaseCommitErrorListener {
 
   /**
    * Notification that a remote failure caused the operation to fail.
@@ -47,7 +46,7 @@ public interface DistributedThreePhaseCommitErrorListener extends
    * @param phase the phase during which the failure occurred
    * @param cause the local, root cause of the failure
    */
-  public void localOperationException(CommitPhase phase, DistributedCommitException cause);
+  public void localOperationException(CommitPhase phase, Exception cause);
 
   /**
    * Add an error listener to listen for all the same errors <tt>this</tt> receives.
@@ -63,4 +62,10 @@ public interface DistributedThreePhaseCommitErrorListener extends
    * @param cause the root cause
    */
   public void controllerConnectionFailure(String message, IOException cause);
+  
+  /**
+   * Called if the operation times out.
+   * @param cause information about the exception
+   */
+  public void operationTimeout(OperationAttemptTimeoutException cause);
 }

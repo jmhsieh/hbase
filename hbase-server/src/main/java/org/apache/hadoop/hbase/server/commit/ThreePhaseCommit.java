@@ -25,6 +25,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.CommitPhase;
+import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitErrorListener;
 import org.apache.hadoop.hbase.server.errorhandling.ExceptionCheckable;
 import org.apache.hadoop.hbase.server.errorhandling.OperationAttemptTimer;
 import org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTimeoutException;
@@ -33,7 +34,7 @@ import org.apache.hadoop.hbase.util.Threads;
 
 /**
  * A two-phase commit that enforces a time-limit on the operation. If the time limit expires before
- * the operation completes, the {@link ThreePhaseCommitErrorListenable} will receive a
+ * the operation completes, the {@link DistributedThreePhaseCommitErrorListener} will receive a
  * {@link OperationAttemptTimeoutException} from the {@link OperationAttemptTimer}.
  * <p>
  * This is particularly useful for situations when running a distributed {@link TwoPhaseCommit} so
@@ -44,7 +45,8 @@ import org.apache.hadoop.hbase.util.Threads;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public abstract class ThreePhaseCommit<L extends ThreePhaseCommitErrorListenable<E>, E extends Exception> 
+// T is unused.
+public abstract class ThreePhaseCommit<T, E extends Exception> 
   implements  Callable<Void>, Runnable, TwoPhaseCommitable<E>{
 
   /** latch counted down when the prepared phase completes */
@@ -58,7 +60,7 @@ public abstract class ThreePhaseCommit<L extends ThreePhaseCommitErrorListenable
   /** monitor to check for errors */
   private final ExceptionCheckable<E> errorMonitor;
   /** listener to listen for any errors to the operation */
-  private final L errorListener;
+  private final DistributedThreePhaseCommitErrorListener errorListener;
   /** The current phase the operation is in */
   protected CommitPhase phase = CommitPhase.PRE_PREPARE;
   /** frequency to check for errors (ms) */
@@ -74,14 +76,14 @@ public abstract class ThreePhaseCommit<L extends ThreePhaseCommitErrorListenable
    * @param wakeFrequency frequency to wake to check if there is an error via the monitor (in
    *          milliseconds).
    */
-  public ThreePhaseCommit(ExceptionCheckable<E> monitor, L errorListener,
+  public ThreePhaseCommit(ExceptionCheckable<E> monitor, DistributedThreePhaseCommitErrorListener errorListener,
       long wakeFrequency) {
     // Default to a very large timeout
     this(monitor, errorListener, wakeFrequency, 1, 1, 1, 1, Integer.MAX_VALUE);
   }
 
   
-  public ThreePhaseCommit(ExceptionCheckable<E> monitor, L errorListener,
+  public ThreePhaseCommit(ExceptionCheckable<E> monitor, DistributedThreePhaseCommitErrorListener errorListener,
       long wakeFrequency, int numPrepare,
       int numAllowCommit, int numCommitted, int numCompleted, long timeout) {
     this.errorMonitor = monitor;
@@ -100,7 +102,7 @@ public abstract class ThreePhaseCommit<L extends ThreePhaseCommitErrorListenable
    * @param errorListener error listener to listen for errors while running the task
    * @param wakeFrequency frequency to check for errors while waiting for latches
    */
-  public ThreePhaseCommit(ExceptionCheckable<E> monitor, L errorListener, long wakeFrequency,
+  public ThreePhaseCommit(ExceptionCheckable<E> monitor, DistributedThreePhaseCommitErrorListener errorListener, long wakeFrequency,
       long timeout) {
     this(monitor, errorListener, wakeFrequency);
 //    this.timer = setupTimer(errorListener, timeout);
@@ -122,7 +124,7 @@ public abstract class ThreePhaseCommit<L extends ThreePhaseCommitErrorListenable
    * @param timeout max amount of time to allow for the operation to run
    */
   public ThreePhaseCommit(int numPrepare, int numAllowCommit, int numCommitted, int numCompleted,
-      ExceptionCheckable<E> monitor, L errorListener, long wakeFrequency, long timeout) {
+      ExceptionCheckable<E> monitor, DistributedThreePhaseCommitErrorListener errorListener, long wakeFrequency, long timeout) {
     this(monitor, errorListener, wakeFrequency, numPrepare, numAllowCommit, numCommitted,
         numCompleted, timeout);
   }
@@ -135,7 +137,7 @@ public abstract class ThreePhaseCommit<L extends ThreePhaseCommitErrorListenable
    * @param timeout max amount of time the operation is allowed to run before expiring.
    * @return a timer for the overal operation
    */
-  private OperationAttemptTimer setupTimer(final ThreePhaseCommitErrorListenable<E> errorListener,
+  private OperationAttemptTimer setupTimer(final DistributedThreePhaseCommitErrorListener errorListener,
       long timeout) {
     // setup a simple monitor so we pass through the error to the specific listener
     ExceptionSnare<OperationAttemptTimeoutException> passThroughMonitor = new ExceptionSnare<OperationAttemptTimeoutException>() {
@@ -226,8 +228,9 @@ public abstract class ThreePhaseCommit<L extends ThreePhaseCommitErrorListenable
       LOG.debug("Commit phase completed, counting down finsh latch.");
       this.getCommitFinishedLatch().countDown();
     } catch (Exception e) {
+      // TODO I don't trust this exception catch and forced cast
       LOG.error("Two phase commit failed!", e);
-      errorListener.localOperationException(phase, (E) e);
+      errorListener.localOperationException(phase, e);
       LOG.debug("Running cleanup phase.");
       this.cleanup(e);
     } finally {
@@ -243,7 +246,7 @@ public abstract class ThreePhaseCommit<L extends ThreePhaseCommitErrorListenable
     this.call();
   }
 
-  public L getErrorListener() {
+  public DistributedThreePhaseCommitErrorListener getErrorListener() {
     return errorListener;
   }
 
