@@ -33,7 +33,7 @@ import org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTi
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public interface DistributedThreePhaseCommitErrorListener {
+public interface DistributedErrorListener {
 
   /**
    * Notification that a remote failure caused the operation to fail.
@@ -52,7 +52,7 @@ public interface DistributedThreePhaseCommitErrorListener {
    * Add an error listener to listen for all the same errors <tt>this</tt> receives.
    * @param listener listener to listen for errors
    */
-  public void addErrorListener(DistributedThreePhaseCommitErrorListener listener);
+  public void addErrorListener(DistributedErrorListener listener);
 
 
   /**

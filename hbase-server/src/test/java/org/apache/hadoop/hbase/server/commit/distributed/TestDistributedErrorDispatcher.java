@@ -37,8 +37,8 @@ import org.mockito.internal.matchers.ArrayEquals;
 @Category(SmallTests.class)
 public class TestDistributedErrorDispatcher {
 
-  private static final DistributedThreePhaseCommitErrorListener mock = Mockito
-      .mock(DistributedThreePhaseCommitErrorListener.class);
+  private static final DistributedErrorListener mock = Mockito
+      .mock(DistributedErrorListener.class);
 
   @After
   public void resetMocks() {

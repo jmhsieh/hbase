@@ -19,7 +19,7 @@ import static org.mockito.Mockito.verify;
 import org.apache.hadoop.hbase.SmallTests;
 import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.CommitPhase;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitErrorListener;
+import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
 import org.apache.hadoop.hbase.server.errorhandling.impl.ExceptionSnare;
 import org.junit.After;
 import org.junit.Test;
@@ -37,7 +37,7 @@ import org.mockito.verification.VerificationMode;
 public class TestTwoPhaseCommit {
 
   private ExceptionSnare<Exception> monitor = new ExceptionSnare<Exception>();
-  private DistributedThreePhaseCommitErrorListener listener = Mockito.mock(DistributedThreePhaseCommitErrorListener.class);
+  private DistributedErrorListener listener = Mockito.mock(DistributedErrorListener.class);
   private final long wakeFrequency = 50;
 
   @After

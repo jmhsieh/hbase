@@ -32,7 +32,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFail
 import org.apache.hadoop.hbase.server.commit.ThreePhaseCommit;
 import org.apache.hadoop.hbase.server.commit.TwoPhaseCommitable;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitErrorListener;
+import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitManager;
 import org.apache.hadoop.hbase.server.commit.distributed.RemoteExceptionSerializer;
 import org.apache.hadoop.hbase.server.errorhandling.ExceptionCheckable;
@@ -52,7 +52,7 @@ import org.apache.hadoop.hbase.util.Threads;
 @InterfaceStability.Evolving
 public class DistributedThreePhaseCommitCohortMember
     extends
-    DistributedThreePhaseCommitManager<DistributedCommitCohortMemberController, ThreePhaseCommit<DistributedThreePhaseCommitErrorListener, DistributedCommitException>, DistributedThreePhaseCommitErrorListener>
+    DistributedThreePhaseCommitManager<DistributedCommitCohortMemberController, ThreePhaseCommit<DistributedErrorListener, DistributedCommitException>, DistributedErrorListener>
     implements CohortMemberTaskRunner, Closeable {
   private static final Log LOG = LogFactory.getLog(DistributedThreePhaseCommitCohortMember.class);
 
@@ -135,7 +135,7 @@ public class DistributedThreePhaseCommitCohortMember
   @Override
   public void runNewOperation(String opName, byte[] data) {
     // build a new operation
-    ThreePhaseCommit<DistributedThreePhaseCommitErrorListener, DistributedCommitException> commit = null;
+    ThreePhaseCommit<DistributedErrorListener, DistributedCommitException> commit = null;
     try {
       commit = builder.buildNewOperation(opName, data);
     } catch (IllegalArgumentException e) {
@@ -149,7 +149,7 @@ public class DistributedThreePhaseCommitCohortMember
     }
     // create a monitor to watch for operation failures
     Monitor monitor = new Monitor(opName, commit, commit.getErrorCheckable());
-    DistributedThreePhaseCommitErrorListener dispatcher = commit.getErrorListener();
+    DistributedErrorListener dispatcher = commit.getErrorListener();
     // make sure the listener watches for errors to running operation
     dispatcher.addErrorListener(monitor);
     LOG.debug("Submitting new operation:" + opName);
@@ -182,7 +182,7 @@ public class DistributedThreePhaseCommitCohortMember
     new NotifyListener(opName) {
       @Override
       protected void notifyOperation(
-          ThreePhaseCommit<DistributedThreePhaseCommitErrorListener, DistributedCommitException> operation) {
+          ThreePhaseCommit<DistributedErrorListener, DistributedCommitException> operation) {
         operation.getAllowCommitLatch().countDown();
       }
 
@@ -196,7 +196,7 @@ public class DistributedThreePhaseCommitCohortMember
    * member's progress.
    * <p>
    * However, the monitor also tracks the errors the task encounters. The {@link Monitor} is bound
-   * as a generic {@link DistributedThreePhaseCommitErrorListener} to the operation's
+   * as a generic {@link DistributedErrorListener} to the operation's
    * {@link ErrorMonitorable}, allowing it to get updates when the operation encounters errors.
    * <p>
    * Local errors are serialized and then propagated to the
@@ -210,7 +210,7 @@ public class DistributedThreePhaseCommitCohortMember
    * {@link #controllerConnectionFailure(String, IOException)} (further, it doesn't make sense to
    * update the controller because it is won't reach any other cohort members).
    */
-  private class Monitor extends Thread implements DistributedThreePhaseCommitErrorListener {
+  private class Monitor extends Thread implements DistributedErrorListener {
 
     private String opName;
     private CountDownLatch prepared;
@@ -292,7 +292,7 @@ public class DistributedThreePhaseCommitCohortMember
     }
 
     @Override
-    public void addErrorListener(DistributedThreePhaseCommitErrorListener listener) {
+    public void addErrorListener(DistributedErrorListener listener) {
       throw new UnsupportedOperationException("Cohort member monitor can't add listeners.");
     }
   }

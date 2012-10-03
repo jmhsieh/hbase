@@ -107,9 +107,9 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
    * @return <tt>true</tt> if the operation was started correctly, <tt>false</tt> if the primary
    *         task or any of the sub-tasks could not be started. In the latter case, if the pool is
    *         full the error monitor is also notified that the task could not be created via a
-   *         {@link DistributedThreePhaseCommitErrorListener#localOperationException(CommitPhase, Exception)}
+   *         {@link DistributedErrorListener#localOperationException(CommitPhase, Exception)}
    */
-  protected boolean submitOperation(DistributedThreePhaseCommitErrorListener errorMonitor, String operationName, T primary,
+  protected boolean submitOperation(DistributedErrorListener errorMonitor, String operationName, T primary,
       Callable<?>... tasks) {
     // if the submitted task was null, then we don't want to run the subtasks
     if (primary == null) return false;
@@ -152,7 +152,7 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
    */
   public void controllerConnectionFailure(final String message, final IOException cause) {
     new NotifyAllListeners() {
-      public void notifyListener(DistributedThreePhaseCommitErrorListener listener) {
+      public void notifyListener(DistributedErrorListener listener) {
         listener.controllerConnectionFailure(message, cause);
       }
     }.run();
@@ -177,18 +177,18 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
     // if we know about the operation, notify it
     new NotifyListener(opName) {
       @Override
-      protected void notifyListener(DistributedThreePhaseCommitErrorListener listener) {
+      protected void notifyListener(DistributedErrorListener listener) {
         listener.remoteCommitError(remote[0]);
       }
     }.run();
   }
 
   private class RunningOperation {
-    private final WeakReference<DistributedThreePhaseCommitErrorListener> errorListener;
+    private final WeakReference<DistributedErrorListener> errorListener;
     private final WeakReference<T> op;
 
-    public RunningOperation(T op, DistributedThreePhaseCommitErrorListener listener) {
-      this.errorListener = new WeakReference<DistributedThreePhaseCommitErrorListener>(listener);
+    public RunningOperation(T op, DistributedErrorListener listener) {
+      this.errorListener = new WeakReference<DistributedErrorListener>(listener);
       this.op = new WeakReference<T>(op);
     }
 
@@ -207,7 +207,7 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
      * @param op operation to check
      * @param listener listener to check
      */
-    protected void logMismatchedNulls(T op, DistributedThreePhaseCommitErrorListener listener) {
+    protected void logMismatchedNulls(T op, DistributedErrorListener listener) {
       if (op == null && listener != null || op != null && listener == null) {
         LOG.warn("Operation is currently null:" + (op == null) + ", but listener is "
             + (listener == null ? "" : "not") + "null -- Possible memory leak.");
@@ -226,7 +226,7 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
      * Notify the listener of some state change. Subclass hook for adding custom notifications.
      * @param listener errorListener of a non-null, running operation to notify.
      */
-    protected void notifyListener(DistributedThreePhaseCommitErrorListener errorListener) {
+    protected void notifyListener(DistributedErrorListener errorListener) {
     }
   }
 
@@ -252,7 +252,7 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
       }
       for (Entry<String, RunningOperation> running : toNotify.entrySet()) {
         T op = running.getValue().op.get();
-        DistributedThreePhaseCommitErrorListener listener = running.getValue().errorListener.get();
+        DistributedErrorListener listener = running.getValue().errorListener.get();
         logMismatchedNulls(op, listener);
         if (op == null) {
           // if the op is null, we probably don't have any more references, so we should check again
@@ -296,7 +296,7 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
     public void run() {
       RunningOperation running;
       T op;
-      DistributedThreePhaseCommitErrorListener listener;
+      DistributedErrorListener listener;
       synchronized (operations) {
         running = operations.get(prefix);
         if (running == null) {

@@ -22,7 +22,7 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.server.commit.ThreePhaseCommit;
 import org.apache.hadoop.hbase.server.commit.TwoPhaseCommitable;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitErrorListener;
+import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
 
 /**
  * Task builder to build cohort tasks for a {@link CohortMemberTaskRunner}. This is delegated to
@@ -43,6 +43,6 @@ public interface CohortMemberTaskBuilder {
    *           request
    * @throws IllegalStateException if the current runner cannot accept any more new requests
    */
-  public <T extends ThreePhaseCommit<? extends DistributedThreePhaseCommitErrorListener, DistributedCommitException>> T buildNewOperation(
+  public <T extends ThreePhaseCommit<? extends DistributedErrorListener, DistributedCommitException>> T buildNewOperation(
       String name, byte[] data);
 }

@@ -42,24 +42,24 @@ import org.apache.hadoop.hbase.server.errorhandling.impl.delegate.DelegatingExce
  * The raw {@link #receiveError(String, DistributedCommitException, Object...)} should <b>NOT</b> be
  * used externally - they are relied upon internally for message passing. Instead, you should use
  * methods specified in the listener interfaces.
- * @see DistributedThreePhaseCommitErrorListener
+ * @see DistributedErrorListener
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public class DistributedThreePhaseCommitErrorDispatcher
     extends
-    DelegatingExceptionDispatcher<ExceptionDispatcher<DistributedThreePhaseCommitErrorListener, DistributedCommitException>, DistributedThreePhaseCommitErrorListener, DistributedCommitException>
-    implements DistributedThreePhaseCommitErrorListener {
+    DelegatingExceptionDispatcher<ExceptionDispatcher<DistributedErrorListener, DistributedCommitException>, DistributedErrorListener, DistributedCommitException>
+    implements DistributedErrorListener {
 
   /**
    * Create a custom dispatcher that just uses
    * @param visitor visitor to use when notifying any listening
-   *          {@link DistributedThreePhaseCommitErrorListener}
+   *          {@link DistributedErrorListener}
    */
   public DistributedThreePhaseCommitErrorDispatcher(
-      ExceptionVisitor<DistributedThreePhaseCommitErrorListener> visitor) {
+      ExceptionVisitor<DistributedErrorListener> visitor) {
     super(
-        new ExceptionDispatcher<DistributedThreePhaseCommitErrorListener, DistributedCommitException>(
+        new ExceptionDispatcher<DistributedErrorListener, DistributedCommitException>(
             visitor));
   }
 
@@ -140,10 +140,10 @@ public class DistributedThreePhaseCommitErrorDispatcher
   }
 
   private static class DistributedCommitErrorListenerVisitor implements
-      ExceptionVisitor<DistributedThreePhaseCommitErrorListener> {
+      ExceptionVisitor<DistributedErrorListener> {
 
     @Override
-    public void visit(DistributedThreePhaseCommitErrorListener listener, String message,
+    public void visit(DistributedErrorListener listener, String message,
         Exception e, Object... info) {
       // we need to wrap all the exceptions from the internal notification scheme, so we unwrap it
       // here and get the real exception
