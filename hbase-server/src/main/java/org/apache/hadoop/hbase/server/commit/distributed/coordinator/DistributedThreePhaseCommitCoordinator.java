@@ -43,7 +43,7 @@ import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedC
 @InterfaceStability.Evolving
 public class DistributedThreePhaseCommitCoordinator {
 
-  private final DistributedCommitCoordinatorController controller;
+  private DistributedCommitCoordinatorController controller;
   private CoordinatorTaskBuilder builder;
   private DistributedThreePhaseCommitManager manager;
   
@@ -55,6 +55,10 @@ public class DistributedThreePhaseCommitCoordinator {
     this.manager = new DistributedThreePhaseCommitManager(nodeName, keepAliveTime, opThreads, "commit-coordinator");
     this.controller = controller;
     setBuilder(builder);
+  }
+  
+  public void setController(DistributedCommitCoordinatorController dcc) {
+    this.controller = dcc;
   }
 
   public DistributedThreePhaseCommitManager getManager() {

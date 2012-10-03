@@ -206,7 +206,7 @@ public class TestZooKeeperDistributedThreePhaseCommitControllers {
       cc.commited(operationName);
     }
 
-    // wait for all commit notifications to reach the coordiantor
+    // wait for all commit notifications to reach the coordinator
     committed.await();
     // make sure we got the all the nodes and no more
     Mockito.verify(coordinator, times(expected.size())).committed(Mockito.eq(operationName),
@@ -215,7 +215,7 @@ public class TestZooKeeperDistributedThreePhaseCommitControllers {
     controller.resetOperation(operationName);
 
     // verify all behavior
-    verifyZooKeeperClean(operationName, watcher, controller);
+    verifyZooKeeperClean(operationName, watcher, controller.getZkController());
     verifyCohort(member, cohortControllers.size(), operationName, data);
     verifyCoordinator(operationName, coordinator, expected);
   }
@@ -284,7 +284,7 @@ public class TestZooKeeperDistributedThreePhaseCommitControllers {
     controller.resetOperation(operationName);
 
     // verify all behavior
-    verifyZooKeeperClean(operationName, watcher, controller);
+    verifyZooKeeperClean(operationName, watcher, controller.getZkController());
     verifyCohort(member, cohortControllers.size(), operationName, data);
     verifyCoordinator(operationName, coordinator, expected);
   }
@@ -367,9 +367,9 @@ public class TestZooKeeperDistributedThreePhaseCommitControllers {
         DistributedThreePhaseCommitCoordinator coordinator, String controllerName,
         DistributedThreePhaseCommitCohortMember member, List<String> expected) throws Exception {
       // start the controller
-      ZKTwoPhaseCommitCoordinatorController controller = new ZKTwoPhaseCommitCoordinatorController(
+      ZKTwoPhaseCommitCoordinatorController controller = new ZKTwoPhaseCommitCoordinatorController(coordinator,
           watcher, operationName, CONTROLLER_NODE_NAME);
-      controller.start(coordinator);
+      controller.start();
 
       // make a cohort controller for each expected node
 
@@ -407,9 +407,9 @@ public class TestZooKeeperDistributedThreePhaseCommitControllers {
       }
 
       // start the controller
-      ZKTwoPhaseCommitCoordinatorController controller = new ZKTwoPhaseCommitCoordinatorController(
+      ZKTwoPhaseCommitCoordinatorController controller = new ZKTwoPhaseCommitCoordinatorController(coordinator,
           watcher, operationName, CONTROLLER_NODE_NAME);
-      controller.start(coordinator);
+      controller.start();
 
       return new Pair<ZKTwoPhaseCommitCoordinatorController, List<ZKTwoPhaseCommitCohortMemberController>>(
           controller, cohortControllers);

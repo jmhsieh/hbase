@@ -130,15 +130,18 @@ public class TestDistributedThreePhaseCommit {
     List<String> expected = Arrays.asList(cohortNames);
 
     // start running the controller
-    ZKTwoPhaseCommitCoordinatorController coordinatorController = new ZKTwoPhaseCommitCoordinatorController(
-        coordinatorWatcher, opDescription, COORDINATOR_NODE_NAME);
     CoordinatorTaskBuilder coordinatorTaskBuilder = Mockito.spy(new CoordinatorTaskBuilder(
         WAKE_FREQUENCY, TIMEOUT, TIMEOUT_INFO));
     
     DistributedThreePhaseCommitCoordinator coordinator = new DistributedThreePhaseCommitCoordinator(
-        COORDINATOR_NODE_NAME, KEEP_ALIVE, POOL_SIZE, WAKE_FREQUENCY, coordinatorController,
+        COORDINATOR_NODE_NAME, KEEP_ALIVE, POOL_SIZE, WAKE_FREQUENCY, null,
         coordinatorTaskBuilder);
-    coordinatorController.start(coordinator);
+
+    ZKTwoPhaseCommitCoordinatorController coordinatorController = new ZKTwoPhaseCommitCoordinatorController(coordinator,
+        coordinatorWatcher, opDescription, COORDINATOR_NODE_NAME);
+    coordinator.setController(coordinatorController);
+    
+    coordinatorController.start();
 
     CohortMemberTaskBuilder cohortMemberBuilder = Mockito.mock(CohortMemberTaskBuilder.class);
     List<Pair<DistributedThreePhaseCommitCohortMember, ZKTwoPhaseCommitCohortMemberController>> cohort = new ArrayList<Pair<DistributedThreePhaseCommitCohortMember, ZKTwoPhaseCommitCohortMemberController>>(
@@ -249,15 +252,17 @@ public class TestDistributedThreePhaseCommit {
     final CountDownLatch coordinatorReceivedErrorLatch = new CountDownLatch(1);
 
     // start running the coordinator and its controller
-    ZooKeeperWatcher coordinatorWatcher = newZooKeeperWatcher();
-    ZKTwoPhaseCommitCoordinatorController coordinatorController = new ZKTwoPhaseCommitCoordinatorController(
-        coordinatorWatcher, opDescription, COORDINATOR_NODE_NAME);
     CoordinatorTaskBuilder coordinatorTaskBuilder = Mockito.spy(new CoordinatorTaskBuilder(
         WAKE_FREQUENCY, TIMEOUT, TIMEOUT_INFO));
     DistributedThreePhaseCommitCoordinator coordinator = new DistributedThreePhaseCommitCoordinator(
-        COORDINATOR_NODE_NAME, KEEP_ALIVE, POOL_SIZE, WAKE_FREQUENCY, coordinatorController,
+        COORDINATOR_NODE_NAME, KEEP_ALIVE, POOL_SIZE, WAKE_FREQUENCY, null,
         coordinatorTaskBuilder);
-    coordinatorController.start(coordinator);
+
+    ZooKeeperWatcher coordinatorWatcher = newZooKeeperWatcher();
+    ZKTwoPhaseCommitCoordinatorController coordinatorController = new ZKTwoPhaseCommitCoordinatorController(coordinator, 
+        coordinatorWatcher, opDescription, COORDINATOR_NODE_NAME);
+    coordinator.setController(coordinatorController);
+    coordinatorController.start();
 
     // start a cohort member for each cohort member
     CohortMemberTaskBuilder cohortMemberBuilder = Mockito.mock(CohortMemberTaskBuilder.class);
