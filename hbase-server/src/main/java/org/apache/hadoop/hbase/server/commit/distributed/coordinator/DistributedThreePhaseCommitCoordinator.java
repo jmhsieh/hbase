@@ -22,6 +22,7 @@ import java.util.concurrent.RejectedExecutionException;
 
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.hbase.server.commit.ThreePhaseCommit;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitErrorDispatcher;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitManager;
 import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitCoordinatorController;
@@ -42,7 +43,7 @@ import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedC
 @InterfaceStability.Evolving
 public class DistributedThreePhaseCommitCoordinator
     extends
-    DistributedThreePhaseCommitManager<DistributedCommitCoordinatorController, CoordinatorTask> {
+    DistributedThreePhaseCommitManager<DistributedCommitCoordinatorController> {
 
   private final DistributedCommitCoordinatorController controller;
   private CoordinatorTaskBuilder builder;
@@ -88,7 +89,7 @@ public class DistributedThreePhaseCommitCoordinator
   public void prepared(String operationName, final String node) {
     new NotifyListener(operationName) {
       @Override
-      public void notifyOperation(CoordinatorTask task) {
+      public void notifyOperation(ThreePhaseCommit task) {
         task.prepared(node);
       }
     }.run();
@@ -102,7 +103,7 @@ public class DistributedThreePhaseCommitCoordinator
   public void committed(String operationName, final String node) {
     new NotifyListener(operationName) {
       @Override
-      public void notifyOperation(CoordinatorTask task) {
+      public void notifyOperation(ThreePhaseCommit task) {
         task.committed(node);
       }
     }.run();

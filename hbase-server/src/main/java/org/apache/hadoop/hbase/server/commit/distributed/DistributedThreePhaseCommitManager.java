@@ -53,7 +53,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
-public class DistributedThreePhaseCommitManager<C extends DistributedCommitController<?>, T extends Callable<?>>
+public class DistributedThreePhaseCommitManager<C extends DistributedCommitController<?>>
     implements Closeable {
   private static final Log LOG = LogFactory.getLog(DistributedThreePhaseCommitManager.class);
   private final Map<String, RunningOperation> operations = new HashMap<String, RunningOperation>();
@@ -108,7 +108,7 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
    *         full the error monitor is also notified that the task could not be created via a
    *         {@link DistributedErrorListener#localOperationException(CommitPhase, Exception)}
    */
-  protected boolean submitOperation(DistributedErrorListener errorMonitor, String operationName, T primary,
+  protected boolean submitOperation(DistributedErrorListener errorMonitor, String operationName, ThreePhaseCommit primary,
       Callable<?>... tasks) {
     // if the submitted task was null, then we don't want to run the subtasks
     if (primary == null) return false;
@@ -184,11 +184,11 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
 
   private class RunningOperation {
     private final WeakReference<DistributedErrorListener> errorListener;
-    private final WeakReference<T> op;
+    private final WeakReference<ThreePhaseCommit> op;
 
-    public RunningOperation(T op, DistributedErrorListener listener) {
+    public RunningOperation(ThreePhaseCommit  op, DistributedErrorListener listener) {
       this.errorListener = new WeakReference<DistributedErrorListener>(listener);
-      this.op = new WeakReference<T>(op);
+      this.op = new WeakReference<ThreePhaseCommit>(op);
     }
 
     public boolean isRemovable() {
@@ -206,7 +206,7 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
      * @param op operation to check
      * @param listener listener to check
      */
-    protected void logMismatchedNulls(T op, DistributedErrorListener listener) {
+    protected void logMismatchedNulls(ThreePhaseCommit op, DistributedErrorListener listener) {
       if (op == null && listener != null || op != null && listener == null) {
         LOG.warn("Operation is currently null:" + (op == null) + ", but listener is "
             + (listener == null ? "" : "not") + "null -- Possible memory leak.");
@@ -218,7 +218,7 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
      * notifications.
      * @param operation a non-null, running operation to notify.
      */
-    protected void notifyOperation(T operation) {
+    protected void notifyOperation(ThreePhaseCommit operation) {
     }
 
     /**
@@ -250,7 +250,7 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
         }
       }
       for (Entry<String, RunningOperation> running : toNotify.entrySet()) {
-        T op = running.getValue().op.get();
+        ThreePhaseCommit op = running.getValue().op.get();
         DistributedErrorListener listener = running.getValue().errorListener.get();
         logMismatchedNulls(op, listener);
         if (op == null) {
@@ -294,7 +294,7 @@ public class DistributedThreePhaseCommitManager<C extends DistributedCommitContr
     @Override
     public void run() {
       RunningOperation running;
-      T op;
+      ThreePhaseCommit op;
       DistributedErrorListener listener;
       synchronized (operations) {
         running = operations.get(prefix);

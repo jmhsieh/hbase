@@ -52,7 +52,7 @@ import org.apache.hadoop.hbase.util.Threads;
 @InterfaceStability.Evolving
 public class DistributedThreePhaseCommitCohortMember
     extends
-    DistributedThreePhaseCommitManager<DistributedCommitCohortMemberController, ThreePhaseCommit>
+    DistributedThreePhaseCommitManager<DistributedCommitCohortMemberController>
     implements CohortMemberTaskRunner, Closeable {
   private static final Log LOG = LogFactory.getLog(DistributedThreePhaseCommitCohortMember.class);
 

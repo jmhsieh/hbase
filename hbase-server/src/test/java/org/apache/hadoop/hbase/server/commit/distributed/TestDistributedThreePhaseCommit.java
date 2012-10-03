@@ -219,6 +219,14 @@ public class TestDistributedThreePhaseCommit {
           @Override
           public void finish() {
           }
+
+          @Override
+          public void prepared(String node) {
+          }
+
+          @Override
+          public void committed(String node) {
+          }
         });
   }
 

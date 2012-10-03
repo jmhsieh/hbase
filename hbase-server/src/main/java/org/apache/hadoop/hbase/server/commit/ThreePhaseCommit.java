@@ -186,9 +186,13 @@ public abstract class ThreePhaseCommit
   @Override
   public abstract void prepare() throws DistributedCommitException;
 
+  public abstract void prepared(String node);
+  
   @Override
   public abstract void commit() throws DistributedCommitException;
 
+  public abstract void committed(String node);
+  
   @Override
   public abstract void cleanup(Exception e);
 
