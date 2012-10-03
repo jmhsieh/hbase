@@ -25,7 +25,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitController;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -105,6 +104,26 @@ public abstract class ZKTwoPhaseCommitController
     }
   }
 
+  public String getPrepareBarrierNode(String opInstanceName) {
+    return ZKTwoPhaseCommitController.getPrepareBarrierNode(this, opInstanceName);
+  }
+
+  public String getCommitBarrierNode(String opInstanceName) {
+    return ZKTwoPhaseCommitController.getCommitBarrierNode(this, opInstanceName);
+  }
+
+  public String getAbortNode(String opInstanceName) {
+    return ZKTwoPhaseCommitController.getAbortNode(this, opInstanceName);
+  }
+
+  public String getAbortZnode() {
+    return abortZnode;
+  }
+
+  public String getBaseZnode() {
+    return baseZNode;
+  }
+  
   /**
    * Get the full znode path to the node used by the coordinator to starting the operation and as a
    * barrier node for the prepare phase.
@@ -136,6 +155,10 @@ public abstract class ZKTwoPhaseCommitController
    */
   public static String getAbortNode(ZKTwoPhaseCommitController controller, String opInstanceName) {
     return ZKUtil.joinZNode(controller.abortZnode, opInstanceName);
+  }
+  
+  public ZooKeeperWatcher getWatcher() {
+    return watcher;
   }
 
   // --------------------------------------------------------------------------

@@ -47,15 +47,16 @@ import org.apache.zookeeper.KeeperException;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class ZKTwoPhaseCommitCohortMemberController extends
-    ZKTwoPhaseCommitController implements
-    DistributedCommitCohortMemberController {
+public class ZKTwoPhaseCommitCohortMemberController 
+  implements DistributedCommitCohortMemberController {
 
   private static final Log LOG = LogFactory.getLog(ZKTwoPhaseCommitCohortMemberController.class);
   private final String nodeName;
   
   protected DistributedThreePhaseCommitCohortMember listener;
+  private ZKTwoPhaseCommitController zkController; 
 
+  
   /**
    * Must call {@link #start(DistributedThreePhaseCommitCohortMember)} before this is can be used.
    * @param watcher {@link ZooKeeperWatcher} to be owned by <tt>this</tt>. Closed via
@@ -66,43 +67,60 @@ public class ZKTwoPhaseCommitCohortMemberController extends
    */
   public <T> ZKTwoPhaseCommitCohortMemberController(ZooKeeperWatcher watcher,
       String operationDescription, String nodeName) throws KeeperException {
-    super(watcher, operationDescription, nodeName);
+    this.zkController = new ZKTwoPhaseCommitController(zkController.getWatcher(), operationDescription, nodeName) {
+      @Override
+      public void nodeCreated(String path) {
+        if (path.startsWith(this.baseZNode)) {
+          LOG.info("Received created event:" + path);
+          // if it is a simple start/end/abort then we just rewatch the node
+          if (path.equals(this.prepareBarrier)) {
+            watchForNewOperations();
+            return;
+          } else if (path.equals(this.abortZnode)) {
+            watchForAbortedOperations();
+            return;
+          }
+          String parent = ZKUtil.getParent(path);
+          // if its the end barrier, the operation can be completed
+          if (parent.equals(this.commitBarrier)) {
+            passAlongCommit(path);
+            return;
+          } else if (parent.equals(this.abortZnode)) {
+            abort(path);
+            return;
+          } else if (parent.equals(this.prepareBarrier)) {
+            startNewOperation(path);
+          } else {
+            LOG.debug("Ignoring created notification for node:" + path);
+          }
+        }
+      }
+      
+      @Override
+      public void nodeChildrenChanged(String path) {
+        LOG.info("Received children changed event:" + path);
+        if (path.equals(this.prepareBarrier)) {
+          LOG.info("Recieved start event.");
+          watchForNewOperations();
+        } else if (path.equals(this.abortZnode)) {
+          LOG.info("Recieved abort event.");
+          watchForAbortedOperations();
+        }
+      }
+    };
     this.nodeName = nodeName;
   }
 
+  public ZKTwoPhaseCommitController getZkController() {
+    return zkController;
+  }
+  
   protected void start() {
     LOG.debug("Starting the cohort controller");
     watchForAbortedOperations();
     watchForNewOperations();
   }
 
-  @Override
-  public void nodeCreated(String path) {
-    if (path.startsWith(this.baseZNode)) {
-      LOG.info("Received created event:" + path);
-      // if it is a simple start/end/abort then we just rewatch the node
-      if (path.equals(this.prepareBarrier)) {
-        watchForNewOperations();
-        return;
-      } else if (path.equals(this.abortZnode)) {
-        watchForAbortedOperations();
-        return;
-      }
-      String parent = ZKUtil.getParent(path);
-      // if its the end barrier, the operation can be completed
-      if (parent.equals(this.commitBarrier)) {
-        passAlongCommit(path);
-        return;
-      } else if (parent.equals(this.abortZnode)) {
-        abort(path);
-        return;
-      } else if (parent.equals(this.prepareBarrier)) {
-        startNewOperation(path);
-      } else {
-        LOG.debug("Ignoring created notification for node:" + path);
-      }
-    }
-  }
 
   /**
    * Pass along the commit notification to any listeners
@@ -114,38 +132,28 @@ public class ZKTwoPhaseCommitCohortMemberController extends
     this.listener.commitInitiated(opName);
   }
 
-  @Override
-  public void nodeChildrenChanged(String path) {
-    LOG.info("Received children changed event:" + path);
-    if (path.equals(this.prepareBarrier)) {
-      LOG.info("Recieved start event.");
-      watchForNewOperations();
-    } else if (path.equals(this.abortZnode)) {
-      LOG.info("Recieved abort event.");
-      watchForAbortedOperations();
-    }
-  }
+
 
   private void watchForAbortedOperations() {
-    LOG.debug("Checking for aborted operations on node:" + this.abortZnode);
+    LOG.debug("Checking for aborted operations on node:" + zkController.abortZnode);
     try {
       // this is the list of the currently aborted operations
-      for (String node : ZKUtil.listChildrenAndWatchForNewChildren(watcher, this.abortZnode)) {
-        String abortNode = ZKUtil.joinZNode(this.abortZnode, node);
+      for (String node : ZKUtil.listChildrenAndWatchForNewChildren(zkController.getWatcher(), zkController.abortZnode)) {
+        String abortNode = ZKUtil.joinZNode(zkController.abortZnode, node);
         abort(abortNode);
       }
     } catch (KeeperException e) {
       listener.getManager().controllerConnectionFailure("Failed to list children for abort node:"
-          + this.abortZnode, new IOException(e));
+          + zkController.abortZnode, new IOException(e));
     }
   }
 
   private void watchForNewOperations() {
     // watch for new operations that we need to start
-    LOG.debug("Looking for new operations under znode:" + this.prepareBarrier);
+    LOG.debug("Looking for new operations under znode:" + zkController.prepareBarrier);
     List<String> runningOperations = null;
     try {
-      runningOperations = ZKUtil.listChildrenAndWatchForNewChildren(watcher, this.prepareBarrier);
+      runningOperations = ZKUtil.listChildrenAndWatchForNewChildren(zkController.getWatcher(), zkController.prepareBarrier);
       if (runningOperations == null) {
         LOG.debug("No running operations.");
         return;
@@ -156,7 +164,7 @@ public class ZKTwoPhaseCommitCohortMemberController extends
     }
     for (String operationName : runningOperations) {
       // then read in the operation information
-      String path = ZKUtil.joinZNode(this.prepareBarrier, operationName);
+      String path = ZKUtil.joinZNode(zkController.prepareBarrier, operationName);
       startNewOperation(path);
     }
   }
@@ -172,9 +180,9 @@ public class ZKTwoPhaseCommitCohortMemberController extends
     LOG.debug("Found operation node: " + path);
     String opName = ZKUtil.getNodeName(path);
     // start watching for an abort notification for the operation
-    String abortNode = getAbortNode(this, opName);
+    String abortNode = zkController.getAbortNode(opName);
     try {
-      if (ZKUtil.watchAndCheckExists(watcher, abortNode)) {
+      if (ZKUtil.watchAndCheckExists(zkController.getWatcher(), abortNode)) {
         LOG.debug("Not starting:" + opName + " because we already have an abort notification.");
         return;
       }
@@ -186,7 +194,7 @@ public class ZKTwoPhaseCommitCohortMemberController extends
 
     // get the data for the operation
     try {
-      byte[] data = ZKUtil.getData(watcher, path);
+      byte[] data = ZKUtil.getData(zkController.getWatcher(), path);
       LOG.debug("Found data for znode:" + path);
       listener.runNewOperation(opName, data);
     } catch (KeeperException e) {
@@ -200,13 +208,13 @@ public class ZKTwoPhaseCommitCohortMemberController extends
     try {
       LOG.debug("Node: '" + nodeName + "' joining prepared barrier for operation (" + operationName
           + ") in zk");
-      String prepared = ZKUtil.joinZNode(getPrepareBarrierNode(this, operationName), nodeName);
-      ZKUtil.createAndFailSilent(watcher, prepared);
+      String prepared = ZKUtil.joinZNode(ZKTwoPhaseCommitController.getPrepareBarrierNode(zkController, operationName), nodeName);
+      ZKUtil.createAndFailSilent(zkController.getWatcher(), prepared);
 
       // watch for the complete node for this snapshot
-      String commitBarrier = getCommitBarrierNode(this, operationName);
+      String commitBarrier = zkController.getCommitBarrierNode(operationName);
       LOG.debug("Starting to watch for commit barrier:" + commitBarrier);
-      if (ZKUtil.watchAndCheckExists(watcher, commitBarrier)) {
+      if (ZKUtil.watchAndCheckExists(zkController.getWatcher(), commitBarrier)) {
         passAlongCommit(commitBarrier);
       }
     } catch (KeeperException e) {
@@ -219,9 +227,9 @@ public class ZKTwoPhaseCommitCohortMemberController extends
   public void commited(String operationName) throws IOException {
     LOG.debug("Marking operation (" + operationName + ") committed for node '" + nodeName
         + "' in zk");
-    String joinPath = ZKUtil.joinZNode(getCommitBarrierNode(this, operationName), nodeName);
+    String joinPath = ZKUtil.joinZNode(zkController.getCommitBarrierNode(operationName), nodeName);
     try {
-      ZKUtil.createAndFailSilent(watcher, joinPath);
+      ZKUtil.createAndFailSilent(zkController.getWatcher(), joinPath);
     } catch (KeeperException e) {
       listener.getManager().controllerConnectionFailure("Failed to post zk node:" + joinPath
           + " to join commit barrier.", new IOException(e));
@@ -231,17 +239,17 @@ public class ZKTwoPhaseCommitCohortMemberController extends
   @Override
   public void abortOperation(String operationName, RemoteFailureException failureInfo) {
     LOG.debug("Aborting operation (" + operationName + ") in zk");
-    String operationAbortNode = getAbortNode(this, operationName);
+    String operationAbortNode = zkController.getAbortNode(operationName);
     try {
       LOG.debug("Creating abort node:" + operationAbortNode);
       byte[] errorInfo = failureInfo.toByteArray();
       // first create the znode for the operation
-      ZKUtil.createSetData(watcher, operationAbortNode, errorInfo);
+      ZKUtil.createSetData(zkController.getWatcher(), operationAbortNode, errorInfo);
       LOG.debug("Finished creating abort node:" + operationAbortNode);
     } catch (KeeperException e) {
       // possible that we get this error for the operation if we already reset the zk state, but in
       // that case we should still get an error for that operation anyways
-      logZKTree(this.baseZNode);
+      zkController.logZKTree(zkController.getBaseZnode());
       listener.getManager().controllerConnectionFailure("Failed to post zk node:" + operationAbortNode
           + " to abort operation", new IOException(e));
     }
@@ -255,11 +263,11 @@ public class ZKTwoPhaseCommitCohortMemberController extends
   protected void abort(String abortNode) {
     String opName = ZKUtil.getNodeName(abortNode);
     try {
-      byte[] data = ZKUtil.getData(watcher, abortNode);
+      byte[] data = ZKUtil.getData(zkController.getWatcher(), abortNode);
       this.listener.getManager().abortOperation(opName, data);
     } catch (KeeperException e) {
       listener.getManager().controllerConnectionFailure("Failed to get data for abort node:" + abortNode
-          + this.abortZnode, new IOException(e));
+          + zkController.getAbortZnode(), new IOException(e));
     }
   }
 
@@ -267,6 +275,11 @@ public class ZKTwoPhaseCommitCohortMemberController extends
     LOG.debug("Starting the commit controller for operation:" + this.nodeName);
     this.listener = listener;
     this.start();
+  }
+
+  @Override
+  public void close() throws IOException {
+    zkController.close();
   }
 
 }
