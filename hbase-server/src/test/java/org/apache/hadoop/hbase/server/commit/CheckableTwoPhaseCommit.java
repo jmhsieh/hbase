@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.server.commit;
 
+import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
 import org.apache.hadoop.hbase.server.errorhandling.impl.ExceptionSnare;
 import org.mockito.Mockito;
@@ -26,18 +27,18 @@ import org.mockito.Mockito;
  * progress.
  */
 public class CheckableTwoPhaseCommit extends
-    ThreePhaseCommit<Exception> {
+    ThreePhaseCommit {
   public boolean prepared = false;
   boolean commit = false;
   boolean cleanup = false;
   boolean finish = false;
 
-  public CheckableTwoPhaseCommit(ExceptionSnare<Exception> monitor,
+  public CheckableTwoPhaseCommit(ExceptionSnare<DistributedCommitException> monitor,
       DistributedErrorListener errorListener, long wakeFrequency) {
     super(monitor, errorListener, wakeFrequency);
   }
 
-  public CheckableTwoPhaseCommit(ExceptionSnare<Exception> monitor,
+  public CheckableTwoPhaseCommit(ExceptionSnare<DistributedCommitException> monitor,
       DistributedErrorListener errorListener, long wakeFrequency,
       int i,
       int j, int k, int l) {
@@ -46,11 +47,11 @@ public class CheckableTwoPhaseCommit extends
   }
 
   @Override
-  public void prepare() throws Exception {
+  public void prepare() throws DistributedCommitException {
   }
 
   @Override
-  public void commit() throws Exception {
+  public void commit() throws DistributedCommitException {
   }
 
   @Override

@@ -17,7 +17,6 @@
  */
 package org.apache.hadoop.hbase.server.commit;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.logging.Log;
@@ -25,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.CommitPhase;
+import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
 import org.apache.hadoop.hbase.server.errorhandling.ExceptionCheckable;
 import org.apache.hadoop.hbase.server.errorhandling.OperationAttemptTimer;
@@ -45,8 +45,8 @@ import org.apache.hadoop.hbase.util.Threads;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public abstract class ThreePhaseCommit<E extends Exception> 
-  implements  Callable<Void>, Runnable, TwoPhaseCommitable<E>{
+public abstract class ThreePhaseCommit
+  implements TwoPhaseCommitable<DistributedCommitException>{
 
   /** latch counted down when the prepared phase completes */
   private final CountDownLatch preparedLatch;
@@ -57,7 +57,7 @@ public abstract class ThreePhaseCommit<E extends Exception>
   /** counted down when the {@link #finish()} phase completes */
   private final CountDownLatch completedLatch;
   /** monitor to check for errors */
-  private final ExceptionCheckable<E> errorMonitor;
+  private final ExceptionCheckable<DistributedCommitException> errorMonitor;
   /** listener to listen for any errors to the operation */
   private final DistributedErrorListener errorListener;
   /** The current phase the operation is in */
@@ -75,14 +75,14 @@ public abstract class ThreePhaseCommit<E extends Exception>
    * @param wakeFrequency frequency to wake to check if there is an error via the monitor (in
    *          milliseconds).
    */
-  public ThreePhaseCommit(ExceptionCheckable<E> monitor, DistributedErrorListener errorListener,
+  public ThreePhaseCommit(ExceptionCheckable<DistributedCommitException> monitor, DistributedErrorListener errorListener,
       long wakeFrequency) {
     // Default to a very large timeout
     this(monitor, errorListener, wakeFrequency, 1, 1, 1, 1, Integer.MAX_VALUE);
   }
 
   
-  public ThreePhaseCommit(ExceptionCheckable<E> monitor, DistributedErrorListener errorListener,
+  public ThreePhaseCommit(ExceptionCheckable<DistributedCommitException> monitor, DistributedErrorListener errorListener,
       long wakeFrequency, int numPrepare,
       int numAllowCommit, int numCommitted, int numCompleted, long timeout) {
     this.errorMonitor = monitor;
@@ -101,7 +101,7 @@ public abstract class ThreePhaseCommit<E extends Exception>
    * @param errorListener error listener to listen for errors while running the task
    * @param wakeFrequency frequency to check for errors while waiting for latches
    */
-  public ThreePhaseCommit(ExceptionCheckable<E> monitor, DistributedErrorListener errorListener, long wakeFrequency,
+  public ThreePhaseCommit(ExceptionCheckable<DistributedCommitException> monitor, DistributedErrorListener errorListener, long wakeFrequency,
       long timeout) {
     this(monitor, errorListener, wakeFrequency);
 //    this.timer = setupTimer(errorListener, timeout);
@@ -123,7 +123,7 @@ public abstract class ThreePhaseCommit<E extends Exception>
    * @param timeout max amount of time to allow for the operation to run
    */
   public ThreePhaseCommit(int numPrepare, int numAllowCommit, int numCommitted, int numCompleted,
-      ExceptionCheckable<E> monitor, DistributedErrorListener errorListener, long wakeFrequency, long timeout) {
+      ExceptionCheckable<DistributedCommitException> monitor, DistributedErrorListener errorListener, long wakeFrequency, long timeout) {
     this(monitor, errorListener, wakeFrequency, numPrepare, numAllowCommit, numCommitted,
         numCompleted, timeout);
   }
@@ -179,15 +179,15 @@ public abstract class ThreePhaseCommit<E extends Exception>
     return this.completedLatch;
   }
 
-  public ExceptionCheckable<E> getErrorCheckable() {
+  public ExceptionCheckable<DistributedCommitException> getErrorCheckable() {
     return this.errorMonitor;
   }
 
   @Override
-  public abstract void prepare() throws E;
+  public abstract void prepare() throws DistributedCommitException;
 
   @Override
-  public abstract void commit() throws E;
+  public abstract void commit() throws DistributedCommitException;
 
   @Override
   public abstract void cleanup(Exception e);
@@ -257,7 +257,7 @@ public abstract class ThreePhaseCommit<E extends Exception>
    * @throws E if the task was failed while waiting
    * @throws InterruptedException if we are interrupted while waiting for exception
    */
-  public void waitForLatch(CountDownLatch latch, String latchType) throws E, InterruptedException {
+  public void waitForLatch(CountDownLatch latch, String latchType) throws DistributedCommitException, InterruptedException {
     Threads.waitForLatch(latch, errorMonitor, wakeFrequency, latchType);
   }
 

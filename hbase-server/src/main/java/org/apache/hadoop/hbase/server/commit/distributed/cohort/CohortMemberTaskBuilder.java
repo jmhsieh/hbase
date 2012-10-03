@@ -43,6 +43,6 @@ public interface CohortMemberTaskBuilder {
    *           request
    * @throws IllegalStateException if the current runner cannot accept any more new requests
    */
-  public <T extends ThreePhaseCommit<DistributedCommitException>> T buildNewOperation(
+  public <T extends ThreePhaseCommit> T buildNewOperation(
       String name, byte[] data);
 }

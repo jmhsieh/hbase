@@ -36,7 +36,7 @@ import org.mockito.verification.VerificationMode;
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public class TestTwoPhaseCommit {
 
-  private ExceptionSnare<Exception> monitor = new ExceptionSnare<Exception>();
+  private ExceptionSnare<DistributedCommitException> monitor = new ExceptionSnare<DistributedCommitException>();
   private DistributedErrorListener listener = Mockito.mock(DistributedErrorListener.class);
   private final long wakeFrequency = 50;
 
@@ -117,7 +117,7 @@ public class TestTwoPhaseCommit {
   @Test(timeout = 1000)
   public void testErrorPropagation() throws Exception {
     // use own own monitor here to not munge the rest of the test
-    ExceptionSnare<Exception> monitor = new ExceptionSnare<Exception>();
+    ExceptionSnare<DistributedCommitException> monitor = new ExceptionSnare<DistributedCommitException>();
     ThreePhaseCommit tpc = Mockito.spy(new CheckableTwoPhaseCommit(monitor, listener, wakeFrequency));
     DistributedCommitException cause = new DistributedCommitException("Example DCE");
     monitor.receiveError("test before commit starts", cause);
@@ -132,7 +132,7 @@ public class TestTwoPhaseCommit {
     Mockito.reset(listener);
 
     // now test that we can put an error in before the commit phase runs
-    monitor = new ExceptionSnare<Exception>();
+    monitor = new ExceptionSnare<DistributedCommitException>();
     tpc = Mockito.spy(new CheckableTwoPhaseCommit(monitor, listener, wakeFrequency));
     t = new Thread(tpc);
     t.start();

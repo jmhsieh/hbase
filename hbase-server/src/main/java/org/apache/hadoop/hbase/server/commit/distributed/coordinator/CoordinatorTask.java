@@ -40,7 +40,7 @@ import com.google.common.collect.Lists;
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
 public class CoordinatorTask extends
-    ThreePhaseCommit<DistributedCommitException> {
+    ThreePhaseCommit {
 
   private static final Log LOG = LogFactory.getLog(CoordinatorTask.class);
 
