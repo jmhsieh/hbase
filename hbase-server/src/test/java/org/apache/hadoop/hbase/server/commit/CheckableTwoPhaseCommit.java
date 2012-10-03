@@ -26,7 +26,7 @@ import org.mockito.Mockito;
  * progress.
  */
 public class CheckableTwoPhaseCommit extends
-    ThreePhaseCommit<DistributedErrorListener, Exception> {
+    ThreePhaseCommit<Exception> {
   public boolean prepared = false;
   boolean commit = false;
   boolean cleanup = false;

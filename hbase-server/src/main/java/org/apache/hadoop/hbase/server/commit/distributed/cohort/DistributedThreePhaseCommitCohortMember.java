@@ -52,7 +52,7 @@ import org.apache.hadoop.hbase.util.Threads;
 @InterfaceStability.Evolving
 public class DistributedThreePhaseCommitCohortMember
     extends
-    DistributedThreePhaseCommitManager<DistributedCommitCohortMemberController, ThreePhaseCommit<DistributedErrorListener, DistributedCommitException>, DistributedErrorListener>
+    DistributedThreePhaseCommitManager<DistributedCommitCohortMemberController, ThreePhaseCommit<DistributedCommitException>, DistributedErrorListener>
     implements CohortMemberTaskRunner, Closeable {
   private static final Log LOG = LogFactory.getLog(DistributedThreePhaseCommitCohortMember.class);
 
@@ -135,7 +135,7 @@ public class DistributedThreePhaseCommitCohortMember
   @Override
   public void runNewOperation(String opName, byte[] data) {
     // build a new operation
-    ThreePhaseCommit<DistributedErrorListener, DistributedCommitException> commit = null;
+    ThreePhaseCommit<DistributedCommitException> commit = null;
     try {
       commit = builder.buildNewOperation(opName, data);
     } catch (IllegalArgumentException e) {
@@ -182,7 +182,7 @@ public class DistributedThreePhaseCommitCohortMember
     new NotifyListener(opName) {
       @Override
       protected void notifyOperation(
-          ThreePhaseCommit<DistributedErrorListener, DistributedCommitException> operation) {
+          ThreePhaseCommit<DistributedCommitException> operation) {
         operation.getAllowCommitLatch().countDown();
       }
 

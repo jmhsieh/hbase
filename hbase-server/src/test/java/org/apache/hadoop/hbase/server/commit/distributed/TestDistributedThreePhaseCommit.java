@@ -202,7 +202,7 @@ public class TestDistributedThreePhaseCommit {
    */
   private ThreePhaseCommit spiedCommitTask(DistributedThreePhaseCommitErrorDispatcher cohortMonitor) {
     return Mockito
-        .spy(new ThreePhaseCommit<DistributedThreePhaseCommitErrorDispatcher, DistributedCommitException>(
+        .spy(new ThreePhaseCommit<DistributedCommitException>(
             cohortMonitor, cohortMonitor, WAKE_FREQUENCY, TIMEOUT) {
           @Override
           public void prepare() throws DistributedCommitException {
@@ -275,7 +275,7 @@ public class TestDistributedThreePhaseCommit {
           int index = elem[0];
           if (index == memberErrorIndex) {
             LOG.debug("Sending error to coordinator");
-            ((ThreePhaseCommit<DistributedThreePhaseCommitErrorDispatcher, ?>) invocation.getMock())
+            ((ThreePhaseCommit<?>) invocation.getMock())
                 .getErrorListener().operationTimeout(new OperationAttemptTimeoutException(1, 2, 0));
             // don't complete the error phase until the coordinator has gotten the error
             // notification (which ensures that we never progress past prepare)

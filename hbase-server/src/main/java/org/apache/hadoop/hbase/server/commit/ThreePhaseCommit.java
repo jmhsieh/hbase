@@ -45,8 +45,7 @@ import org.apache.hadoop.hbase.util.Threads;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-// T is unused.
-public abstract class ThreePhaseCommit<T, E extends Exception> 
+public abstract class ThreePhaseCommit<E extends Exception> 
   implements  Callable<Void>, Runnable, TwoPhaseCommitable<E>{
 
   /** latch counted down when the prepared phase completes */

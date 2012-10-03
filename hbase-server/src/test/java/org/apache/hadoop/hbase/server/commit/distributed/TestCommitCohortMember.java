@@ -397,7 +397,7 @@ public class TestCommitCohortMember {
    * Helper {@link ThreePhaseCommit} who's phase for each step is just empty
    */
   public class EmptyThreePhaseCommit extends
-      ThreePhaseCommit<DistributedThreePhaseCommitErrorDispatcher, DistributedCommitException> {
+      ThreePhaseCommit<DistributedCommitException> {
     public EmptyThreePhaseCommit(DistributedThreePhaseCommitErrorDispatcher dispatcher) {
       super(dispatcher, dispatcher, WAKE_FREQUENCY, TIMEOUT);
     }
