@@ -57,28 +57,21 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
     this.zkController = new ZKCommitUtil(watcher, operationDescription, nodeName) {
       @Override
       public void nodeCreated(String path) {
-        if (!path.startsWith(baseZNode)) return;
+        if (!zkController.isInCommitPath(path)) return;
         LOG.debug("Node created: " + path);
         logZKTree(this.baseZNode);
-        if (path.startsWith(this.prepareBarrier) && !path.equals(prepareBarrier)) {
+        if (zkController.isPreparePathNode(path)) {
           listener.prepared(ZKUtil.getNodeName(ZKUtil.getParent(path)), ZKUtil.getNodeName(path));
         }
-        if (path.startsWith(this.commitBarrier) && !path.equals(commitBarrier)) {
+        if (zkController.isCommitPathNode(path)) {
           listener.committed(ZKUtil.getNodeName(ZKUtil.getParent(path)), ZKUtil.getNodeName(path));
         }
-        if (path.startsWith(this.abortZnode) && !path.equals(abortZnode)) {
+        if (zkController.isAbortPathNode(path)) {
           abort(path);
         }
       }
-
     };
-    
-    // If the coordinator was shutdown mid-operation, then we are going to lose
-    // an operation that was previously started by cleaning out all the previous state. Its much
-    // harder to figure out how to keep an operation going and the subject of HBASE-5487.
-    ZKUtil.deleteChildrenRecursively(watcher, zkController.prepareBarrier);
-    ZKUtil.deleteChildrenRecursively(watcher, zkController.commitBarrier);
-    ZKUtil.deleteChildrenRecursively(watcher, zkController.abortZnode);
+    zkController.clearChildNodes();
   }
 
   @Override
@@ -135,18 +128,16 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
   }
 
 
+  /**
+   * OperationName is prepared, commit, abort
+   */
   @Override
   public void resetOperation(String operationName) throws IOException {
     boolean stillGettingNotifications = false;
     do {
       try {
         LOG.debug("Attempting to clean out zk node for op:" + operationName);
-        ZKUtil.deleteNodeRecursively(zkController.getWatcher(),
-          zkController.getPrepareBarrierNode(operationName));
-        ZKUtil.deleteNodeRecursively(zkController.getWatcher(),
-          zkController.getCommitBarrierNode(operationName));
-        ZKUtil.deleteNodeRecursively(zkController.getWatcher(),
-          zkController.getAbortNode(operationName));
+        zkController.clearNodes(operationName);
         stillGettingNotifications = false;
       } catch (KeeperException.NotEmptyException e) {
         // recursive delete isn't transactional (yet) so we need to deal with cases where we get

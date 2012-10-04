@@ -25,6 +25,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -161,6 +162,22 @@ public abstract class ZKCommitUtil
     return watcher;
   }
 
+  public boolean isInCommitPath(String path) {
+    return path.startsWith(baseZNode);
+  }
+
+  public boolean isPreparePathNode(String path) {
+    return path.startsWith(this.prepareBarrier) && !path.equals(prepareBarrier);
+  }
+
+  public boolean isCommitPathNode(String path) {
+    return path.startsWith(this.commitBarrier) && !path.equals(commitBarrier);
+  }
+
+  public boolean isAbortPathNode(String path) {
+    return path.startsWith(this.abortZnode) && !path.equals(abortZnode);
+  }
+
   // --------------------------------------------------------------------------
   // internal debugging methods
   // --------------------------------------------------------------------------
@@ -195,4 +212,24 @@ public abstract class ZKCommitUtil
       logZKTree(node, prefix + "---");
     }
   }
+
+  public void clearChildNodes() throws KeeperException {
+    // XXX This is potentially racy since not atomic.
+    
+    // If the coordinator was shutdown mid-operation, then we are going to lose
+    // an operation that was previously started by cleaning out all the previous state. Its much
+    // harder to figure out how to keep an operation going and the subject of HBASE-5487.
+    ZKUtil.deleteChildrenRecursively(watcher, prepareBarrier);
+    ZKUtil.deleteChildrenRecursively(watcher, commitBarrier);
+    ZKUtil.deleteChildrenRecursively(watcher, abortZnode);
+  }
+  
+  public void clearNodes(String operationName) throws KeeperException {
+    // XXX This is potentially racy since not atomic.
+    
+    ZKUtil.deleteNodeRecursively(watcher, getPrepareBarrierNode(operationName));
+    ZKUtil.deleteNodeRecursively(watcher, getCommitBarrierNode(operationName));
+    ZKUtil.deleteNodeRecursively(watcher, getAbortNode(operationName));
+  }
+
 }
