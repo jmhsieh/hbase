@@ -45,7 +45,7 @@ public class DistributedThreePhaseCommitCoordinator {
 
   private DistributedCommitCoordinatorController controller;
   private CoordinatorTaskBuilder builder;
-  private DistributedThreePhaseCommitManager manager;
+  private final DistributedThreePhaseCommitManager manager;
   
   public DistributedThreePhaseCommitCoordinator(String nodeName,
       long keepAliveTime,

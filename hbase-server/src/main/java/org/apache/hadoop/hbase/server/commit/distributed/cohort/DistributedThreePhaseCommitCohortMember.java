@@ -140,6 +140,8 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
    * <ol>
    * @param opThreads supplied number of threads
    * @return the updated number of threads for the task pool
+   * 
+   * // TODO: Shouldn't be called get*.
    */
   private static int getOpThreads(int opThreads) {
     if (opThreads < 0) {
@@ -151,6 +153,7 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
       return MIN_OP_THREADS;
     }
     int threads = opThreads * OP_THREAD_MULTIPLIER;
+    // TODO this isn't setting anything, it is just calculating
     LOG.debug("Setting max threads to: " + threads + " (" + OP_THREAD_MULTIPLIER + "x " + opThreads
         + " running operations) to allow thread montioring");
     // double the op threads since we need to concurrently run a montior with the operation as well,
@@ -158,6 +161,12 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
     return threads;
   }
 
+  /**
+   * Creates a new commit object, gets listener from commit and then registers a new monitor.
+   * 
+   * @param opName
+   * @param data
+   */
   public void runNewOperation(String opName, byte[] data) {
     // build a new operation
     ThreePhaseCommit commit = null;

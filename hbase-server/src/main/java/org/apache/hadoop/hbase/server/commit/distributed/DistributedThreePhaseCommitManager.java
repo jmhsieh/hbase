@@ -46,9 +46,6 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 /**
  * Run a Distributed {@link ThreePhaseCommit} on demand from a controller
- * @param <C> controller to use for notifying distributed members of the operation
- * @param <T> Type of task that is being submitted
- * @param <L> Type of listener to keep track of the operation progress
  */
 @InterfaceAudience.Private
 @InterfaceStability.Evolving
@@ -73,7 +70,7 @@ public class DistributedThreePhaseCommitManager
   }
 
   /**
-   * Create a manager with the speciied controller, node name and parameters for a standard thread
+   * Create a manager with the specified controller, node name and parameters for a standard thread
    * pool
    * @param controller control access to the rest of the cluster
    * @param nodeName name of the node where <tt>this</tt> is running
@@ -91,6 +88,9 @@ public class DistributedThreePhaseCommitManager
 
   /**
    * TODO: THIS IS A HACK until it is refactored.  We should not expose this.
+   * 
+   * Actions on this reference need to be sychronized.
+   * 
    * @return
    */
   public Map<String, RunningOperation> getOperationsRef() {
@@ -107,7 +107,7 @@ public class DistributedThreePhaseCommitManager
   /**
    * Submit an operation and all its dependent operations to be run.
    * @param errorMonitor monitor to notify if we can't start all the operations
-   * @param primary primary operation to start
+   * @param operationName operation to start (ex: a snapshot id)
    * @param tasks subtasks of the primary operation
    * @return <tt>true</tt> if the operation was started correctly, <tt>false</tt> if the primary
    *         task or any of the sub-tasks could not be started. In the latter case, if the pool is
@@ -166,13 +166,13 @@ public class DistributedThreePhaseCommitManager
   /**
    * Abort the operation with the given name
    * @param opName name of the operation to about
-   * @param data serialized information about the abort
+   * @param reason serialized information about the abort
    */
-  public void abortOperation(String opName, byte[] data) {
+  public void abortOperation(String opName, byte[] reason) {
     // figure out the data we need to pass
     final RemoteFailureException[] remote = new RemoteFailureException[1];
     try {
-      remote[0] = RemoteFailureException.parseFrom(data);
+      remote[0] = RemoteFailureException.parseFrom(reason);
     } catch (InvalidProtocolBufferException e) {
       LOG.warn("Got an error notification for op:" + opName
           + " but we can't read the information. Killing the operation.");
