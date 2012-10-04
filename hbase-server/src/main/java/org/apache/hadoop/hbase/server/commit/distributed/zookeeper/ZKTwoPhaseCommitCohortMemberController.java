@@ -57,6 +57,9 @@ public class ZKTwoPhaseCommitCohortMemberController
   private ZKCommitUtil zkController; 
 
   
+  // TODO: on recovery we need to instantiate new instances of this for every outstanding
+  // distributed commit?  Where is this recovery logic?
+  
   /**
    * Must call {@link #start(DistributedThreePhaseCommitCohortMember)} before this is can be used.
    * @param watcher {@link ZooKeeperWatcher} to be owned by <tt>this</tt>. Closed via
@@ -203,12 +206,23 @@ public class ZKTwoPhaseCommitCohortMemberController
     }
   }
 
+  /**
+   * This attempts to create a prepared state node for the operation (snapshot name).  This acts as
+   * the YES vote in 2pc.
+   * 
+   * It then looks for the commit znode that will act as the COMMIT message.  If not present we
+   * have a watcher, if present then trigger the committed action.
+   * 
+   * TODO: Why no watch on the abort message?
+   * TODO: What if this had already been committed? What prevents double commit?
+   */
   @Override
   public void prepared(String operationName) throws IOException {
     try {
       LOG.debug("Node: '" + nodeName + "' joining prepared barrier for operation (" + operationName
           + ") in zk");
       String prepared = ZKUtil.joinZNode(ZKCommitUtil.getPrepareBarrierNode(zkController, operationName), nodeName);
+      // TODO: this is seems concerning -- this effectively says we cannot log progress.
       ZKUtil.createAndFailSilent(zkController.getWatcher(), prepared);
 
       // watch for the complete node for this snapshot
@@ -223,6 +237,9 @@ public class ZKTwoPhaseCommitCohortMemberController
     }
   }
 
+  /**
+   * This acts as the ack for a commit.
+   */
   @Override
   public void commited(String operationName) throws IOException {
     LOG.debug("Marking operation (" + operationName + ") committed for node '" + nodeName
@@ -236,6 +253,12 @@ public class ZKTwoPhaseCommitCohortMemberController
     }
   }
   
+  /**
+   * This should be called by the cohort and writes an abort zk which acts as the ??? in 2pc
+   * 
+   * TODO: hm.. maybe this is this the NO vote?  
+   * TODO: where is aborted -- when the coordinator sends ABORT to the cohort?
+   */
   @Override
   public void abortOperation(String operationName, RemoteFailureException failureInfo) {
     LOG.debug("Aborting operation (" + operationName + ") in zk");
@@ -259,6 +282,9 @@ public class ZKTwoPhaseCommitCohortMemberController
   /**
    * Pass along the found abort notification to the listener
    * @param abortNode full znode path to the failed operation information
+   * 
+   * TODO: does this only come from the coordinator?  
+   * TODO: should this be name aborted (similar to prepared, committed)?
    */
   protected void abort(String abortNode) {
     String opName = ZKUtil.getNodeName(abortNode);

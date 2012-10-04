@@ -54,6 +54,7 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
   public ZKTwoPhaseCommitCoordinatorController(DistributedThreePhaseCommitCoordinator l, ZooKeeperWatcher watcher,
       String operationDescription, String nodeName) throws KeeperException {
     this.listener = l;
+    // TODO need to make snanpshotZKUtil have a start method called by start in this class's start method.
     this.zkController = new ZKCommitUtil(watcher, operationDescription, nodeName) {
       @Override
       public void nodeCreated(String path) {
@@ -61,9 +62,13 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
         LOG.debug("Node created: " + path);
         logZKTree(this.baseZNode);
         if (zkController.isPreparePathNode(path)) {
+          // node wasn't present when we created the watch so zk event triggers prepare
           listener.prepared(ZKUtil.getNodeName(ZKUtil.getParent(path)), ZKUtil.getNodeName(path));
         }
         if (zkController.isCommitPathNode(path)) {
+          // node wasn't present when we created the watch so zk envent triggers the commit.
+
+          // TODO Nothing enforces that prepare and commits nodes from showing up in the wrong order. 
           listener.committed(ZKUtil.getNodeName(ZKUtil.getParent(path)), ZKUtil.getNodeName(path));
         }
         if (zkController.isAbortPathNode(path)) {
@@ -74,6 +79,13 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
     zkController.clearChildNodes();
   }
 
+  /**
+   * The "prepare" phase.  The coordinator creates a new operation/prepare/ znode dir, if nodes
+   * appear, first a prepare to relevant listener or sets watch waiting for notification of
+   * the prep node
+   * 
+   * throws IOException if any failure occurs.
+   */
   @Override
   public void prepareOperation(String operationName, byte[] info, List<String> nodeNames)
       throws IOException, IllegalArgumentException {
@@ -130,6 +142,8 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
 
   /**
    * OperationName is prepared, commit, abort
+   * 
+   * // TODO this is named inconsistently -- operationName was snapshot id elsewhere. 
    */
   @Override
   public void resetOperation(String operationName) throws IOException {
@@ -151,6 +165,8 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
 
   /**
    * Start monitoring nodes in ZK - subclass hook to start monitoring nodes they are about.
+   * 
+   * // TODO Why isn't the the listener registered to ZK here instead of constructor?
    */
   public void start() {
     LOG.debug("Starting the commit controller for operation:" + zkController.nodeName);
@@ -159,11 +175,15 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
   
   @Deprecated
   public void start(DistributedThreePhaseCommitCoordinator listener) {
-//    this.listener = listener;
+    //// Made listener final and force it to be set in the constructor.
+    // this.listener = listener;
     this.start();
   }
 
 
+  /**
+   * This this is the abort message being sent by the coordinator to cohort
+   */
   @Override
   public void abortOperation(String operationName, RemoteFailureException failureInfo) {
     LOG.debug("Aborting operation (" + operationName + ") in zk");

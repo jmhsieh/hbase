@@ -25,7 +25,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
-import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperListener;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
@@ -33,8 +32,6 @@ import org.apache.zookeeper.KeeperException;
 
 /**
  * ZooKeeper based controller for a distributed two-phase commit
- * @param <L> type of listener to watch for errors and progress of an operation (both local and
- *          remote)
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
@@ -230,6 +227,8 @@ public abstract class ZKCommitUtil
     ZKUtil.deleteNodeRecursively(watcher, getPrepareBarrierNode(operationName));
     ZKUtil.deleteNodeRecursively(watcher, getCommitBarrierNode(operationName));
     ZKUtil.deleteNodeRecursively(watcher, getAbortNode(operationName));
+    
+    // Why not ZKUtil.deleteChildrenRecursively(wathcer, 
   }
 
 }
