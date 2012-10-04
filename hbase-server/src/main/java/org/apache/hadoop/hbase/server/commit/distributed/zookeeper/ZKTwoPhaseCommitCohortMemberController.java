@@ -65,7 +65,7 @@ public class ZKTwoPhaseCommitCohortMemberController
    * @param nodeName name of the node to join the operation
    * @throws KeeperException if we can't reach zookeeper
    */
-  public <T> ZKTwoPhaseCommitCohortMemberController(ZooKeeperWatcher watcher,
+  public ZKTwoPhaseCommitCohortMemberController(ZooKeeperWatcher watcher,
       String operationDescription, String nodeName) throws KeeperException {
     this.zkController = new ZKCommitUtil(zkController.getWatcher(), operationDescription, nodeName) {
       @Override
