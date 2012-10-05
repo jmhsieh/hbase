@@ -19,24 +19,38 @@ package org.apache.hadoop.hbase.server.commit.distributed.cohort;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.hbase.DaemonThreadFactory;
 import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.CommitPhase;
 import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
 import org.apache.hadoop.hbase.server.commit.ThreePhaseCommit;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitManager;
 import org.apache.hadoop.hbase.server.commit.distributed.RemoteExceptionSerializer;
 import org.apache.hadoop.hbase.server.errorhandling.ExceptionCheckable;
 import org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTimeoutException;
 import org.apache.hadoop.hbase.util.Threads;
+
+import com.google.protobuf.InvalidProtocolBufferException;
 
 /**
  * Process to kick off and manage a running {@link ThreePhaseCommit} cohort member. This is the part
@@ -52,36 +66,13 @@ import org.apache.hadoop.hbase.util.Threads;
 public class DistributedThreePhaseCommitCohortMember implements Closeable {
   private static final Log LOG = LogFactory.getLog(DistributedThreePhaseCommitCohortMember.class);
 
-  // thread pool information
-  private static final int MIN_OP_THREADS = 2;
-  private static final int OP_THREAD_MULTIPLIER = 2;
-
   private final CohortMemberTaskBuilder builder;
   private final long wakeFrequency;
   private final RemoteExceptionSerializer serializer;
-  
   private final DistributedCommitCohortMemberController controller;
-  private final DistributedThreePhaseCommitManager manager;
 
-//  /**
-//   * @param wakeFrequency frequency in ms to check for errors in the operation
-//   * @param keepAlive amount of time to keep alive idle worker threads
-//   * @param opThreads max number of threads to use for running operations. In reality, we will
-//   *          create 2X the number of threads since we need to also run a monitor thread for each
-//   *          running operation
-//   * @param controller controller used to send notifications to the operation coordinator
-//   * @param builder build new distributed three phase commit operations on demand
-//   * @param nodeName name of the node to use when notifying the controller that an operation has
-//   *          prepared, committed, or aborted on operation
-//   */
-//  public DistributedThreePhaseCommitCohortMember(long wakeFrequency, DistributedCommitCohortMemberController controller,
-//      CohortMemberTaskBuilder builder, String nodeName, DistributedThreePhaseCommitManager manager, RemoteExceptionSerializer res)  {
-//    this.manager = manager; // new DistributedThreePhaseCommitManager(nodeName, keepAlive, getOpThreads(opThreads), "cohort-member-" + nodeName);
-//    this.controller = controller;
-//    this.builder = builder;
-//    this.wakeFrequency = wakeFrequency;
-//    this.serializer = res;
-//  }
+  private final Map<String, RunningOperation> operations = new HashMap<String, RunningOperation>();
+  private final ExecutorService pool;
 
   /**
    * @param wakeFrequency frequency in ms to check for errors in the operation
@@ -97,7 +88,10 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
   public DistributedThreePhaseCommitCohortMember(long wakeFrequency, long keepAlive, int opThreads,
       DistributedCommitCohortMemberController controller,
       CohortMemberTaskBuilder builder, String nodeName) {
-    this.manager = new DistributedThreePhaseCommitManager(nodeName, keepAlive, getOpThreads(opThreads), "cohort-member-" + nodeName);
+    this.pool = new ThreadPoolExecutor(0, opThreads, keepAlive,
+        TimeUnit.SECONDS,
+        new SynchronousQueue<Runnable>(), new DaemonThreadFactory("( cohort-memeber-" + nodeName
+            + ")-3PC commit-pool"));
     this.controller = controller;
     this.builder = builder;
     this.wakeFrequency = wakeFrequency;
@@ -116,50 +110,38 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
   public DistributedThreePhaseCommitCohortMember(
       DistributedCommitCohortMemberController controller, String nodeName, ThreadPoolExecutor pool,
       CohortMemberTaskBuilder builder, long wakeFrequency) {
-    this.manager = new DistributedThreePhaseCommitManager(nodeName, pool);
+    this.serializer = new RemoteExceptionSerializer(nodeName);
+    this.pool = pool;
     this.controller = controller;
     this.builder = builder;
     this.wakeFrequency = wakeFrequency;
-    this.serializer = new RemoteExceptionSerializer(nodeName);
   }
 
-  public DistributedThreePhaseCommitManager getManager() {
-    return manager;
+  /**
+   * Gets an operation from currently running operation list.  
+   * 
+   * WTF: Removes if is removable?
+   * 
+   * @param opName
+   * @return
+   */
+  RunningOperation getOperation(String opName) {
+    RunningOperation running;
+    synchronized (operations) {
+      running = operations.get(opName);
+      if (running == null) {
+        LOG.warn("Don't know about op:" + opName+ ", ignoring notification attempt.");
+        return null;
+      }
+      if (running.isRemovable()) {
+        operations.remove(opName);
+        return null;
+      }
+    }
+    running.logMismatchedNulls();
+    return running;
   }
   
-  /**
-   * Update the number of threads to run based on hard-limits.
-   * <p>
-   * <ol>
-   * <li>&lt 0 means max value</li>
-   * <li>&lt {@value #MIN_OP_THREADS} is set to @{value #MIN_OP_THREADS} to ensure we can currently
-   * run operations</li>
-   * <li>any other value is multiplied by {@value #OP_THREAD_MULTIPLIER} to ensure we can also run
-   * monitor threads for each operation</li>
-   * <ol>
-   * @param opThreads supplied number of threads
-   * @return the updated number of threads for the task pool
-   * 
-   * // TODO: Shouldn't be called get*.
-   */
-  private static int getOpThreads(int opThreads) {
-    if (opThreads < 0) {
-      LOG.debug("Using an unbounded thread pool for running operations.");
-      return Integer.MAX_VALUE;
-    } else if (opThreads < MIN_OP_THREADS) {
-      LOG.debug("Recieved op threads = " + opThreads + " setting to min: " + MIN_OP_THREADS
-          + " so we can run monitor thread on the main operation.");
-      return MIN_OP_THREADS;
-    }
-    int threads = opThreads * OP_THREAD_MULTIPLIER;
-    // TODO this isn't setting anything, it is just calculating
-    LOG.debug("Setting max threads to: " + threads + " (" + OP_THREAD_MULTIPLIER + "x " + opThreads
-        + " running operations) to allow thread montioring");
-    // double the op threads since we need to concurrently run a montior with the operation as well,
-    // out of the same pool, one monitor for each operation
-    return threads;
-  }
-
   /**
    * Creates a new commit object, gets listener from commit and then registers a new monitor.
    * 
@@ -186,7 +168,7 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
     // make sure the listener watches for errors to running operation
     dispatcher.addErrorListener(monitor);
     LOG.debug("Submitting new operation:" + opName);
-    if (!this.manager.submitOperation(dispatcher, opName, commit, Executors.callable(monitor))) {
+    if (!this.submitOperation(dispatcher, opName, commit, Executors.callable(monitor))) {
       LOG.error("Failed to start operation:" + opName);
     }
   }
@@ -212,13 +194,11 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
    * @param opName name of the operation that should start running the commit phase
    */
   public void commitInitiated(String opName) {
-    new DistributedThreePhaseCommitManager.NotifyListener(opName, manager.getOperationsRef()) {
-      @Override
-      protected void notifyOperation(ThreePhaseCommit operation) {
-        operation.getAllowCommitLatch().countDown();
-      }
-
-    }.run();
+    RunningOperation running = getOperation(opName);
+    ThreePhaseCommit op = running.getOp();
+    if (op != null) {
+      op.getAllowCommitLatch().countDown();
+    }
   }
 
   /**
@@ -308,8 +288,7 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
         controller.abortOperation(opName, failureMessage);
       } catch (IOException e) {
         // this will fail all the running operations, since the connection is down
-        DistributedThreePhaseCommitCohortMember.this.manager.controllerConnectionFailure(
-          "Failed to abort operation:" + opName, e);
+        controllerConnectionFailure("Failed to abort operation:" + opName, e);
       }
     }
 
@@ -331,6 +310,160 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
 
   @Override
   public void close() throws IOException {
-    manager.close();
+    // have to use shutdown now to break any latch waiting
+    pool.shutdownNow();
+  }
+
+
+  /**
+   * Submit an operation and all its dependent operations to be run.
+   * @param errorMonitor monitor to notify if we can't start all the operations
+   * @param operationName operation to start (ex: a snapshot id)
+   * @param tasks subtasks of the primary operation
+   * @return <tt>true</tt> if the operation was started correctly, <tt>false</tt> if the primary
+   *         task or any of the sub-tasks could not be started. In the latter case, if the pool is
+   *         full the error monitor is also notified that the task could not be created via a
+   *         {@link DistributedErrorListener#localOperationException(CommitPhase, Exception)}
+   */
+  public boolean submitOperation(DistributedErrorListener errorMonitor, String operationName, ThreePhaseCommit primary,
+      Callable<?>... tasks) {
+    // if the submitted task was null, then we don't want to run the subtasks
+    if (primary == null) return false;
+
+    // make sure we aren't already running an operation of that name
+    synchronized (operations) {
+      if (operations.get(operationName) != null) return false;
+    }
+
+    // kick off all the tasks
+    List<Future<?>> futures = new ArrayList<Future<?>>((tasks == null ? 0 : tasks.length) + 1);
+    try {
+      futures.add(this.pool.submit((Callable<?>) primary));
+      for (Callable<?> task : tasks) {
+        futures.add(this.pool.submit(task));
+      }
+      // if everything got started properly, we can add it known running operations
+      synchronized (operations) {
+        this.operations.put(operationName, new RunningOperation(primary, errorMonitor));
+      }
+      return true;
+    } catch (RejectedExecutionException e) {
+      // the thread pool is full and we can't run the operation
+      errorMonitor.localOperationException(CommitPhase.PRE_PREPARE, new DistributedCommitException(
+          "Operation pool is full!", e));
+      // cancel all operations proactively
+      for (Future<?> future : futures) {
+        future.cancel(true);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * The connection to the rest of the commit group (cohort and coordinator) has been
+   * broken/lost/failed. This should fail any interested operations, but not attempt to notify other
+   * members since we cannot reach them anymore.
+   * @param message description of the error
+   * @param cause the actual cause of the failure
+   */
+  public void controllerConnectionFailure(final String message, final IOException cause) {
+    List<String> remove = new ArrayList<String>();
+    Map<String, RunningOperation> toNotify = new HashMap<String, RunningOperation>();
+    synchronized (operations) {
+      for (Entry<String, RunningOperation> op : operations.entrySet()) {
+        if (op.getValue().isRemovable()) {
+          LOG.warn("Ignoring error notification for operation:" + op.getKey()
+              + "  because we the op has finished already.");
+          remove.add(op.getKey());
+          continue;
+        }
+        toNotify.put(op.getKey(), op.getValue());
+      }
+    }
+    for (Entry<String, RunningOperation> e : toNotify.entrySet()) {
+      RunningOperation running = e.getValue();
+      ThreePhaseCommit op = running.getOp();
+      DistributedErrorListener listener = running.getErrorListener();
+      running.logMismatchedNulls();
+      if (op == null) {
+        // if the op is null, we probably don't have any more references, so we should check again
+        if (running.isRemovable()) {
+          remove.add(e.getKey());
+          continue;
+        }
+      }
+      // notify the elements, if they aren't null
+      if (listener != null) { 
+        listener.controllerConnectionFailure(message, cause);
+      }
+    }
+    
+    // clear out operations that have finished
+    synchronized (operations) {
+      for (String op : remove) {
+        operations.remove(op);
+      }
+    }
+  }
+
+
+  /**
+   * Abort the operation with the given name
+   * @param opName name of the operation to about
+   * @param reason serialized information about the abort
+   */
+  public void abortOperation(String opName, byte[] reason) {
+    // figure out the data we need to pass
+    final RemoteFailureException[] remote = new RemoteFailureException[1];
+    try {
+      remote[0] = RemoteFailureException.parseFrom(reason);
+    } catch (InvalidProtocolBufferException e) {
+      LOG.warn("Got an error notification for op:" + opName
+          + " but we can't read the information. Killing the operation.");
+      // we got a remote exception, but we can't describe it (pos, so just
+      remote[0] = serializer.buildRemoteException(e);
+    }
+    // if we know about the operation, notify it
+    RunningOperation running = getOperation(opName);
+    DistributedErrorListener l = running.getErrorListener(); 
+    if (l != null) {
+      l.remoteCommitError(remote[0]);
+    }
+  }
+
+  public static class RunningOperation {
+    private final WeakReference<DistributedErrorListener> errorListener;
+    private final WeakReference<ThreePhaseCommit> op;
+
+    public RunningOperation(ThreePhaseCommit  op, DistributedErrorListener listener) {
+      this.errorListener = new WeakReference<DistributedErrorListener>(listener);
+      this.op = new WeakReference<ThreePhaseCommit>(op);
+    }
+
+    public boolean isRemovable() {
+      return errorListener.get() == null && this.op.get() == null;
+    }
+    public ThreePhaseCommit getOp() {
+      return op.get();
+    }
+    
+    public DistributedErrorListener getErrorListener() {
+      return errorListener.get();
+    }
+
+    protected void logMismatchedNulls() {
+      if (op == null && errorListener != null || op != null && errorListener == null) {
+        LOG.warn("Operation is currently null:" + (op == null) + ", but listener is "
+            + (errorListener == null ? "" : "not") + "null -- Possible memory leak.");
+      }
+    }
+  }
+
+  /**
+   * Exposed for testing!
+   * @return get the underlying thread pool.
+   */
+  public ExecutorService getThreadPool() {
+    return this.pool;
   }
 }
