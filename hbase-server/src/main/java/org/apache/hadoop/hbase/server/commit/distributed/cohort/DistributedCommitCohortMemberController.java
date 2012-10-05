@@ -23,7 +23,6 @@ import java.io.IOException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
-import org.apache.hadoop.hbase.server.commit.TwoPhaseCommitable;
 
 /**
  * Controller used by a cohort member for notifying the commit coordinator

@@ -47,8 +47,7 @@ import org.apache.zookeeper.KeeperException;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class ZKTwoPhaseCommitCohortMemberController 
-  implements DistributedCommitCohortMemberController {
+public class ZKTwoPhaseCommitCohortMemberController implements DistributedCommitCohortMemberController {
 
   private static final Log LOG = LogFactory.getLog(ZKTwoPhaseCommitCohortMemberController.class);
   private final String nodeName;

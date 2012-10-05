@@ -96,6 +96,9 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
       if (ZKUtil.watchAndCheckExists(zkController.getWatcher(), abortNode)) {
         abort(abortNode);
       }
+      // TODO What happens if we get the abort node watch triggered here?  We are aborting, going to
+      // handle it but go about creating a new prepare barrier node.
+      
     } catch (KeeperException e) {
       LOG.error("Failed to create abort", e);
       throw new IOException("Failed while watching abort node:" + abortNode, e);

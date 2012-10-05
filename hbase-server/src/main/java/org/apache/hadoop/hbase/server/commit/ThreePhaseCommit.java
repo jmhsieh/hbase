@@ -17,6 +17,7 @@
  */
 package org.apache.hadoop.hbase.server.commit;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.logging.Log;
@@ -45,9 +46,7 @@ import org.apache.hadoop.hbase.util.Threads;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public abstract class ThreePhaseCommit
-  implements TwoPhaseCommitable<DistributedCommitException>{
-
+public abstract class ThreePhaseCommit implements Callable<Void>, Runnable { 
   /** latch counted down when the prepared phase completes */
   private final CountDownLatch preparedLatch;
   /** waited on before allowing the commit phase to proceed */
@@ -159,22 +158,19 @@ public abstract class ThreePhaseCommit
     this.timer.complete();
     return null;
   }
-  @Override
+
   public CountDownLatch getPreparedLatch() {
     return this.preparedLatch;
   }
 
-  @Override
   public CountDownLatch getAllowCommitLatch() {
     return this.allowCommitLatch;
   }
 
-  @Override
   public CountDownLatch getCommitFinishedLatch() {
     return this.commitFinishLatch;
   }
 
-  @Override
   public CountDownLatch getCompletedLatch() {
     return this.completedLatch;
   }
@@ -183,21 +179,16 @@ public abstract class ThreePhaseCommit
     return this.errorMonitor;
   }
 
-  @Override
   public abstract void prepare() throws DistributedCommitException;
 
   public abstract void prepared(String node);
-  
-  @Override
+
   public abstract void commit() throws DistributedCommitException;
 
   public abstract void committed(String node);
-  
-  @Override
+
   public abstract void cleanup(Exception e);
 
-
-  @Override
   public abstract void finish();
 
   @SuppressWarnings("unchecked")
@@ -244,7 +235,6 @@ public abstract class ThreePhaseCommit
     return null;
   }
 
-  @Override
   public void run() {
     this.call();
   }

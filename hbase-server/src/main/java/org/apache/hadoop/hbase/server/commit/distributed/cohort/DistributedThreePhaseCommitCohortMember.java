@@ -30,7 +30,6 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.CommitPhase;
 import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFailureException;
 import org.apache.hadoop.hbase.server.commit.ThreePhaseCommit;
-import org.apache.hadoop.hbase.server.commit.TwoPhaseCommitable;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitManager;
@@ -250,7 +249,7 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
     private CountDownLatch commit;
     private ExceptionCheckable<DistributedCommitException> errorChecker;
 
-    public Monitor(String opName, TwoPhaseCommitable<DistributedCommitException> operation,
+    public Monitor(String opName, ThreePhaseCommit operation,
         ExceptionCheckable<DistributedCommitException> checkable) {
       this.opName = opName;
       this.prepared = operation.getPreparedLatch();
