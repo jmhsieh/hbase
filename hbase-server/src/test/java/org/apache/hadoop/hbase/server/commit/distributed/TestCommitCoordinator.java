@@ -25,9 +25,8 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.hadoop.hbase.SmallTests;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitErrorDispatcher;
+import org.apache.hadoop.hbase.server.commit.ThreePhaseCommit;
 import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitCoordinatorController;
-import org.apache.hadoop.hbase.server.commit.distributed.coordinator.CoordinatorTask;
 import org.apache.hadoop.hbase.server.commit.distributed.coordinator.CoordinatorTaskBuilder;
 import org.apache.hadoop.hbase.server.commit.distributed.coordinator.DistributedThreePhaseCommitCoordinator;
 import org.junit.After;
@@ -62,7 +61,7 @@ public class TestCommitCoordinator {
   private final CoordinatorTaskBuilder builder = Mockito.mock(CoordinatorTaskBuilder.class);
   private final DistributedCommitCoordinatorController controller = Mockito
       .mock(DistributedCommitCoordinatorController.class);
-  private final CoordinatorTask task = Mockito.mock(CoordinatorTask.class);
+  private final ThreePhaseCommit task = Mockito.mock(ThreePhaseCommit.class);
   private final DistributedThreePhaseCommitErrorDispatcher monitor = Mockito
       .mock(DistributedThreePhaseCommitErrorDispatcher.class);
 
@@ -89,9 +88,9 @@ public class TestCommitCoordinator {
   @Test
   public void testThreadPoolSize() throws Exception {
     DistributedThreePhaseCommitCoordinator coordinator = buildNewCoordinator();
-    CoordinatorTask realTask = new CoordinatorTask(coordinator, controller, monitor,
+    ThreePhaseCommit realTask = new ThreePhaseCommit(coordinator, controller, monitor,
         WAKE_FREQUENCY, TIMEOUT, TIMEOUT_INFO, opName, opData, expected);
-    CoordinatorTask spy = Mockito.spy(realTask);
+    ThreePhaseCommit spy = Mockito.spy(realTask);
     Mockito.when(
       builder.buildOperation(Mockito.eq(coordinator), Mockito.anyString(), Mockito.eq(opData),
         Mockito.eq(expected))).thenReturn(spy, task);
@@ -113,9 +112,9 @@ public class TestCommitCoordinator {
     DistributedThreePhaseCommitErrorDispatcher spyMonitor = Mockito.spy(monitor);
     // setup the task
     List<String> expected = Arrays.asList("cohort");
-    CoordinatorTask task = new CoordinatorTask(coordinator, controller, spyMonitor, WAKE_FREQUENCY,
+    ThreePhaseCommit task = new ThreePhaseCommit(coordinator, controller, spyMonitor, WAKE_FREQUENCY,
         TIMEOUT, TIMEOUT_INFO, opName, opData, expected);
-    final CoordinatorTask spy = Mockito.spy(task);
+    final ThreePhaseCommit spy = Mockito.spy(task);
 
     Mockito.when(
       builder.buildOperation(Mockito.eq(coordinator), Mockito.eq(opName), Mockito.eq(opData),
@@ -154,7 +153,7 @@ public class TestCommitCoordinator {
 
     // setup the task and spy on it
     List<String> expected = Arrays.asList("cohort");
-    final CoordinatorTask spy = Mockito.spy(new CoordinatorTask(coordinator, controller, monitor,
+    final ThreePhaseCommit spy = Mockito.spy(new ThreePhaseCommit(coordinator, controller, monitor,
         WAKE_FREQUENCY, TIMEOUT, TIMEOUT_INFO, opName, opData, expected));
 
     Mockito.when(
@@ -171,7 +170,7 @@ public class TestCommitCoordinator {
         .commitOperation(Mockito.eq(opName), Mockito.anyListOf(String.class));
 
     // run the operation
-    CoordinatorTask task = coordinator.kickOffCommit(opName, opData, expected);
+    ThreePhaseCommit task = coordinator.kickOffCommit(opName, opData, expected);
     // and wait for it to finish
     task.getCompletedLatch().await();
     Mockito.verify(monitor, Mockito.times(1)).controllerConnectionFailure(Mockito.anyString(),
@@ -203,9 +202,9 @@ public class TestCommitCoordinator {
 
   public void runSimpleOrchestration(String... cohort) throws Exception {
     coordinator = buildNewCoordinator();
-    CoordinatorTask task = new CoordinatorTask(coordinator, controller, monitor, WAKE_FREQUENCY,
+    ThreePhaseCommit task = new ThreePhaseCommit(coordinator, controller, monitor, WAKE_FREQUENCY,
         TIMEOUT, TIMEOUT_INFO, opName, opData, Arrays.asList(cohort));
-    final CoordinatorTask spy = Mockito.spy(task);
+    final ThreePhaseCommit spy = Mockito.spy(task);
     runCoordinatedOperation(spy, cohort);
   }
 
@@ -218,9 +217,9 @@ public class TestCommitCoordinator {
     final String[] cohort = new String[] { "one", "two", "three", "four" };
     coordinator = buildNewCoordinator();
     final DistributedThreePhaseCommitCoordinator ref = coordinator;
-    CoordinatorTask task = new CoordinatorTask(coordinator, controller, monitor, WAKE_FREQUENCY,
+    ThreePhaseCommit task = new ThreePhaseCommit(coordinator, controller, monitor, WAKE_FREQUENCY,
         TIMEOUT, TIMEOUT_INFO, opName, opData, Arrays.asList(cohort));
-    final CoordinatorTask spy = Mockito.spy(task);
+    final ThreePhaseCommit spy = Mockito.spy(task);
 
     PrepareOperationAnswer prepare = new PrepareOperationAnswer(opName, cohort) {
       public void doWork() {
@@ -251,29 +250,29 @@ public class TestCommitCoordinator {
   /**
    * Just run a simple operation with the standard name and data, with not special task for the mock
    * coordinator (it works just like a regular coordinator). For custom behavior see
-   * {@link #runCoordinatedOperation(CoordinatorTask, PrepareOperationAnswer, CommitOperationAnswer, String[])}
+   * {@link #runCoordinatedOperation(ThreePhaseCommit, PrepareOperationAnswer, CommitOperationAnswer, String[])}
    * .
-   * @param spy Spy on a real {@link CoordinatorTask} to be returned by the mock
-   *          {@link CoordinatorTaskBuilder}
+   * @param spy Spy on a real {@link ThreePhaseCommit} to be returned by the mock
+   *          {@link ThreePhaseCommitBuilder}
    * @param cohort expected cohort members
    * @throws Exception on failure
    */
-  public void runCoordinatedOperation(CoordinatorTask spy, String... cohort) throws Exception {
+  public void runCoordinatedOperation(ThreePhaseCommit spy, String... cohort) throws Exception {
     runCoordinatedOperation(spy, new PrepareOperationAnswer(opName, cohort),
       new CommitOperationAnswer(opName, cohort), cohort);
   }
 
-  public void runCoordinatedOperation(CoordinatorTask spy, PrepareOperationAnswer prepare,
+  public void runCoordinatedOperation(ThreePhaseCommit spy, PrepareOperationAnswer prepare,
       String... cohort) throws Exception {
     runCoordinatedOperation(spy, prepare, new CommitOperationAnswer(opName, cohort), cohort);
   }
 
-  public void runCoordinatedOperation(CoordinatorTask spy, CommitOperationAnswer commit,
+  public void runCoordinatedOperation(ThreePhaseCommit spy, CommitOperationAnswer commit,
       String... cohort) throws Exception {
     runCoordinatedOperation(spy, new PrepareOperationAnswer(opName, cohort), commit, cohort);
   }
 
-  public void runCoordinatedOperation(CoordinatorTask spy, PrepareOperationAnswer prepareOperation,
+  public void runCoordinatedOperation(ThreePhaseCommit spy, PrepareOperationAnswer prepareOperation,
       CommitOperationAnswer commitOperation, String... cohort) throws Exception {
     List<String> expected = Arrays.asList(cohort);
     Mockito.when(
@@ -287,7 +286,7 @@ public class TestCommitCoordinator {
         .commitOperation(Mockito.eq(opName), Mockito.anyListOf(String.class));
 
     // run the operation
-    CoordinatorTask task = coordinator.kickOffCommit(opName, opData, expected);
+    ThreePhaseCommit task = coordinator.kickOffCommit(opName, opData, expected);
     // and wait for it to finish
     task.getCompletedLatch().await();
 

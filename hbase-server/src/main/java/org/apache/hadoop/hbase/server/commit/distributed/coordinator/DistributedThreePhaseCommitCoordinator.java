@@ -77,10 +77,10 @@ public class DistributedThreePhaseCommitCoordinator {
    * @return handle to the running operation, if it was started correctly, <tt>null</tt> otherwise
    * @throws RejectedExecutionException if there are no more available threads to run the operation
    */
-  public CoordinatorTask kickOffCommit(String operationName, byte[] operationInfo,
+  public ThreePhaseCommit kickOffCommit(String operationName, byte[] operationInfo,
       List<String> expectedNodes) throws RejectedExecutionException {
     // build the operation
-    CoordinatorTask commit = builder.buildOperation(this, operationName, operationInfo,
+    ThreePhaseCommit commit = builder.buildOperation(this, operationName, operationInfo,
       expectedNodes);
     if (this.manager.submitOperation(commit.getErrorListener(), operationName, commit)) {
       return commit;

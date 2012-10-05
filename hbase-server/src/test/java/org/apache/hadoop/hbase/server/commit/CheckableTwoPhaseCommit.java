@@ -37,14 +37,14 @@ public class CheckableTwoPhaseCommit extends
       DistributedErrorListener errorListener, long wakeFrequency) {
     super(monitor, errorListener, wakeFrequency);
   }
-
-  public CheckableTwoPhaseCommit(ExceptionSnare<DistributedCommitException> monitor,
-      DistributedErrorListener errorListener, long wakeFrequency,
-      int i,
-      int j, int k, int l) {
-    // super long timeout
-    super(monitor, errorListener, wakeFrequency, i, j, k, l, Integer.MAX_VALUE);
-  }
+//
+//  public CheckableTwoPhaseCommit(ExceptionSnare<DistributedCommitException> monitor,
+//      DistributedErrorListener errorListener, long wakeFrequency,
+//      int i,
+//      int j, int k, int l) {
+//    // super long timeout
+//    super(monitor, errorListener, wakeFrequency, i, j, k, l, Integer.MAX_VALUE);
+//  }
 
   @Override
   public void prepare() throws DistributedCommitException {

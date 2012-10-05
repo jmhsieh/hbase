@@ -61,10 +61,10 @@ public class CoordinatorTaskBuilder {
    * @param expectedNodes names of the expected cohort members
    * @return a {@link CoordinatorTask} that is ready to run the task
    */
-  public CoordinatorTask buildOperation(DistributedThreePhaseCommitCoordinator parent,
+  public ThreePhaseCommit buildOperation(DistributedThreePhaseCommitCoordinator parent,
       String operationName, byte[] operationInfo, List<String> expectedNodes) {
     DistributedThreePhaseCommitErrorDispatcher errorMonitor = new DistributedThreePhaseCommitErrorDispatcher();
-    return new CoordinatorTask(parent, parent.getController(), errorMonitor, wake, timeout,
+    return new ThreePhaseCommit(parent, parent.getController(), errorMonitor, wake, timeout,
         timeoutInfo, operationName, operationInfo, expectedNodes);
   }
 }
