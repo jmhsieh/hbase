@@ -201,7 +201,7 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
       // possible that we get this error for the operation if we already reset the zk state, but in
       // that case we should still get an error for that operation anyways
       zkController.logZKTree(zkController.baseZNode);
-      listener.getManager().controllerConnectionFailure("Failed to post zk node:" + operationAbortNode
+      listener.controllerConnectionFailure("Failed to post zk node:" + operationAbortNode
           + " to abort operation", new IOException(e));
     }
   }
@@ -214,9 +214,9 @@ public class ZKTwoPhaseCommitCoordinatorController implements DistributedCommitC
     String opName = ZKUtil.getNodeName(abortNode);
     try {
       byte[] data = ZKUtil.getData(zkController.getWatcher(), abortNode);
-      this.listener.getManager().abortOperation(opName, data);
+      this.listener.abortOperation(opName, data);
     } catch (KeeperException e) {
-      listener.getManager().controllerConnectionFailure("Failed to get data for abort node:" + abortNode
+      listener.controllerConnectionFailure("Failed to get data for abort node:" + abortNode
           + zkController.getAbortZnode(), new IOException(e));
     }
   }

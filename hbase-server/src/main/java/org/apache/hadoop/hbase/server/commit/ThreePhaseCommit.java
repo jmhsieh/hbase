@@ -302,7 +302,7 @@ public class ThreePhaseCommit implements Callable<Void>, Runnable {
       // controller setting the prepared nodes
       controller.prepareOperation(opName, data, Lists.newArrayList(this.prepareNodes));
     } catch (IOException e) {
-      parent.getManager().controllerConnectionFailure("Can't reach controller.", e);
+      parent.controllerConnectionFailure("Can't reach controller.", e);
     } catch (IllegalArgumentException e) {
       throw new DistributedCommitException(e, new byte[0]);
     }
@@ -313,7 +313,7 @@ public class ThreePhaseCommit implements Callable<Void>, Runnable {
       // run the commit operation on the cohort
       controller.commitOperation(opName, Lists.newArrayList(this.commitingNodes));
     } catch (IOException e) {
-      parent.getManager().controllerConnectionFailure("Can't reach controller.", e);
+      parent.controllerConnectionFailure("Can't reach controller.", e);
     }
 
     // then wait for the finish latch
@@ -339,7 +339,7 @@ public class ThreePhaseCommit implements Callable<Void>, Runnable {
     try {
       controller.resetOperation(opName);
     } catch (IOException e) {
-      parent.getManager().controllerConnectionFailure("Failed to reset operation:" + opName, e);
+      parent.controllerConnectionFailure("Failed to reset operation:" + opName, e);
     }
   }
 

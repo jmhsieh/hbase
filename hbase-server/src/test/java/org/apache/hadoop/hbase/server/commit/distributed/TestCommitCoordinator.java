@@ -73,7 +73,7 @@ public class TestCommitCoordinator {
     // reset all the mocks used for the tests
     Mockito.reset(builder, controller, task, monitor);
     // close the open coordinator, if it was used
-    if (coordinator != null) coordinator.getManager().close();
+    if (coordinator != null) coordinator.close();
   }
 
   private DistributedThreePhaseCommitCoordinator buildNewCoordinator() {
