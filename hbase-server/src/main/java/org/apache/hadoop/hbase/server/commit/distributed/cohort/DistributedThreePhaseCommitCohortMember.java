@@ -88,7 +88,7 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
   public DistributedThreePhaseCommitCohortMember(long wakeFrequency, long keepAlive, int opThreads,
       DistributedCommitCohortMemberController controller,
       CohortMemberTaskBuilder builder, String nodeName) {
-    this.pool = new ThreadPoolExecutor(0, opThreads, keepAlive,
+    this.pool = new ThreadPoolExecutor(0, getOpThreads(opThreads), keepAlive,
         TimeUnit.SECONDS,
         new SynchronousQueue<Runnable>(), new DaemonThreadFactory("( cohort-memeber-" + nodeName
             + ")-3PC commit-pool"));
@@ -117,6 +117,44 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
     this.wakeFrequency = wakeFrequency;
   }
 
+  // <=== 
+  // TODO why does this exist
+  
+  // thread pool information
+  private static final int MIN_OP_THREADS = 2;
+  private static final int OP_THREAD_MULTIPLIER = 2;
+
+  /**
+   * Update the number of threads to run based on hard-limits.
+   * <p>
+   * <ol>
+   * <li>&lt 0 means max value</li>
+   * <li>&lt {@value #MIN_OP_THREADS} is set to @{value #MIN_OP_THREADS} to ensure we can currently
+   * run operations</li>
+   * <li>any other value is multiplied by {@value #OP_THREAD_MULTIPLIER} to ensure we can also run
+   * monitor threads for each operation</li>
+   * <ol>
+   * @param opThreads supplied number of threads
+   * @return the updated number of threads for the task pool
+   */
+  private static int getOpThreads(int opThreads) {
+    if (opThreads < 0) {
+      LOG.debug("Using an unbounded thread pool for running operations.");
+      return Integer.MAX_VALUE;
+    } else if (opThreads < MIN_OP_THREADS) {
+      LOG.debug("Recieved op threads = " + opThreads + " setting to min: " + MIN_OP_THREADS
+          + " so we can run monitor thread on the main operation.");
+      return MIN_OP_THREADS;
+    }
+    int threads = opThreads * OP_THREAD_MULTIPLIER;
+    LOG.debug("Setting max threads to: " + threads + " (" + OP_THREAD_MULTIPLIER + "x " + opThreads
+        + " running operations) to allow thread montioring");
+    // double the op threads since we need to concurrently run a montior with the operation as well,
+    // out of the same pool, one monitor for each operation
+    return threads;
+  }
+  // ===> 
+  
   /**
    * Gets an operation from currently running operation list.  
    * 
@@ -169,7 +207,7 @@ public class DistributedThreePhaseCommitCohortMember implements Closeable {
     dispatcher.addErrorListener(monitor);
     LOG.debug("Submitting new operation:" + opName);
     if (!this.submitOperation(dispatcher, opName, commit, Executors.callable(monitor))) {
-      LOG.error("Failed to start operation:" + opName);
+      LOG.error("Failed to start cohort operation:" + opName);
     }
   }
 

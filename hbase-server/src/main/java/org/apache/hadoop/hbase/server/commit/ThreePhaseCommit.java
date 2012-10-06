@@ -34,6 +34,8 @@ import org.apache.hadoop.hbase.server.errorhandling.impl.ExceptionSnare;
 import org.apache.hadoop.hbase.util.Threads;
 
 /**
+ * This is the class encapsulates the work that a distributed operations needs to do.
+ * 
  * A two-phase commit that enforces a time-limit on the operation. If the time limit expires before
  * the operation completes, the {@link DistributedErrorListener} will receive a
  * {@link OperationAttemptTimeoutException} from the {@link OperationAttemptTimer}.

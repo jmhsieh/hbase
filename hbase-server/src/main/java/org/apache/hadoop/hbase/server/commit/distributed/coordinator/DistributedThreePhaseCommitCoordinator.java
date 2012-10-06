@@ -72,8 +72,7 @@ public class DistributedThreePhaseCommitCoordinator {
   protected final RemoteExceptionSerializer serializer;
   
   public DistributedThreePhaseCommitCoordinator(String nodeName,
-      long keepAliveTime,
- int opThreads,
+      long keepAliveTime, int opThreads,
       long wakeFrequency, DistributedCommitCoordinatorController controller,
       CoordinatorTaskBuilder builder) {
     this(nodeName, new ThreadPoolExecutor(0, opThreads, keepAliveTime,

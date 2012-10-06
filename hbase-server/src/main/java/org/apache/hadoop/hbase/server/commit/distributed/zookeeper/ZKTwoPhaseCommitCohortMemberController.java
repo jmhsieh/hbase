@@ -69,7 +69,7 @@ public class ZKTwoPhaseCommitCohortMemberController implements DistributedCommit
    */
   public ZKTwoPhaseCommitCohortMemberController(ZooKeeperWatcher watcher,
       String operationDescription, String nodeName) throws KeeperException {
-    this.zkController = new ZKCommitUtil(zkController.getWatcher(), operationDescription, nodeName) {
+    this.zkController = new ZKCommitUtil(watcher, operationDescription, nodeName) {
       @Override
       public void nodeCreated(String path) {
         if (path.startsWith(this.baseZNode)) {
@@ -137,7 +137,7 @@ public class ZKTwoPhaseCommitCohortMemberController implements DistributedCommit
 
 
   private void watchForAbortedOperations() {
-    LOG.debug("Checking for aborted operations on node:" + zkController.abortZnode);
+    LOG.debug("Checking for aborted operations on node: '" + zkController.abortZnode + "'");
     try {
       // this is the list of the currently aborted operations
       for (String node : ZKUtil.listChildrenAndWatchForNewChildren(zkController.getWatcher(), zkController.abortZnode)) {
@@ -152,7 +152,7 @@ public class ZKTwoPhaseCommitCohortMemberController implements DistributedCommit
 
   private void watchForNewOperations() {
     // watch for new operations that we need to start
-    LOG.debug("Looking for new operations under znode:" + zkController.prepareBarrier);
+    LOG.debug("Looking for new operations under znode: '" + zkController.prepareBarrier + "'");
     List<String> runningOperations = null;
     try {
       runningOperations = ZKUtil.listChildrenAndWatchForNewChildren(zkController.getWatcher(), zkController.prepareBarrier);

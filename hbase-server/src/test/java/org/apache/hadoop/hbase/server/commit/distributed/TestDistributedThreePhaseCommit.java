@@ -74,7 +74,7 @@ public class TestDistributedThreePhaseCommit {
   private static final long WAKE_FREQUENCY = 500;
   private static final Object[] TIMEOUT_INFO = new Object[] { "timeout!" };
   private static final String opName = "op";
-  private static final byte[] data = new byte[] { 1, 2 };
+  private static final byte[] data = new byte[] { 1, 2 }; // TODO what is this used for?
   private static final VerificationMode once = Mockito.times(1);
 
   @BeforeClass
@@ -107,13 +107,12 @@ public class TestDistributedThreePhaseCommit {
     runSimpleCommit();
   }
 
-  @Ignore("Disabled because broken due to composition")
   @Test
   public void testSingleMemberCohort() throws Exception {
     runSimpleCommit("one");
   }
 
-  @Ignore("Disabled because broken due to composition")
+//  @Ignore("Disabled because broken due to composition")
   @Test
   public void testMultipleMemberCohort() throws Exception {
     runSimpleCommit("one", "two", "three", "four" );
@@ -136,11 +135,9 @@ public class TestDistributedThreePhaseCommit {
     DistributedThreePhaseCommitCoordinator coordinator = new DistributedThreePhaseCommitCoordinator(
         COORDINATOR_NODE_NAME, KEEP_ALIVE, POOL_SIZE, WAKE_FREQUENCY, null,
         coordinatorTaskBuilder);
-
     ZKTwoPhaseCommitCoordinatorController coordinatorController = new ZKTwoPhaseCommitCoordinatorController(coordinator,
         coordinatorWatcher, opDescription, COORDINATOR_NODE_NAME);
-    coordinator.setController(coordinatorController);
-    
+    coordinator.setController(coordinatorController);    
     coordinatorController.start();
 
     CohortMemberTaskBuilder cohortMemberBuilder = Mockito.mock(CohortMemberTaskBuilder.class);
@@ -167,7 +164,8 @@ public class TestDistributedThreePhaseCommit {
       cohortTasks.add(commit);
     }
 
-    final int[] i = new int[] { 0 };
+    // link 3PC to buildNewOperation invocation.
+    final int[] i = new int[] { 0 }; // index to cohort tasks.
     Mockito.when(
       cohortMemberBuilder.buildNewOperation(Mockito.eq(opName),
         (byte[]) Mockito.argThat(new ArrayEquals(data)))).thenAnswer(
@@ -241,7 +239,6 @@ public class TestDistributedThreePhaseCommit {
    * timeout exception during the prepare stage.
    * @throws Exception
    */
-  @Ignore("Disabled because broken due to composition")
   @Test
   public void testMultiCohortWithMemberTimeoutDuringPrepare() throws Exception {
     String opDescription = "error injection coordination";

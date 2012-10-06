@@ -39,7 +39,6 @@ import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.hbase.zookeeper.ZooKeeperWatcher;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
@@ -76,7 +75,6 @@ public class TestZooKeeperDistributedThreePhaseCommitControllers {
    * Smaller test to just test the actuation on the cohort member
    * @throws Exception on failure
    */
-  @Ignore("Disabled because broken due to composition")
   @Test(timeout = 15000)
   public void testSimpleZKCohortMemberController() throws Exception {
     ZooKeeperWatcher watcher = UTIL.getZooKeeperWatcher();
@@ -144,7 +142,6 @@ public class TestZooKeeperDistributedThreePhaseCommitControllers {
     runMockCommitWithOrchestratedControllers(startCohortFirst, operationName, data);
   }
 
-  @Ignore("Disabled because broken due to composition")
   @Test(timeout = 15000)
   public void testZKCoordinatorControllerWithSingleMemberCohort() throws Exception {
     final String operationName = "single member controller test";
@@ -154,7 +151,6 @@ public class TestZooKeeperDistributedThreePhaseCommitControllers {
     runMockCommitWithOrchestratedControllers(startCohortFirst, operationName, data, "cohort");
   }
 
-  @Ignore("Disabled because broken due to composition")
   @Test(timeout = 15000)
   public void testZKCoordinatorControllerMultipleCohort() throws Exception {
     final String operationName = "multi member controller test";

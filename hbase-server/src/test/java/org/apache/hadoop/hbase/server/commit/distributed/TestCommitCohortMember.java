@@ -33,7 +33,6 @@ import org.apache.hadoop.hbase.server.commit.distributed.cohort.DistributedCommi
 import org.apache.hadoop.hbase.server.commit.distributed.cohort.DistributedThreePhaseCommitCohortMember;
 import org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTimeoutException;
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.InOrder;
@@ -120,12 +119,10 @@ public class TestCommitCohortMember {
     member.runNewOperation(op, data);
     member.runNewOperation("fail op", new byte[0]);
     // make sure we got an error on the error listener
-    // XXX: HACK to pass, don't know why.
-    Mockito.verify(mockListener, Mockito.times(2)).localOperationException(Mockito.eq(CommitPhase.PRE_PREPARE),
+    Mockito.verify(mockListener).localOperationException(Mockito.eq(CommitPhase.PRE_PREPARE),
       (DistributedCommitException) Mockito.any());
   }
 
-  @Ignore("Disabled because broken due to composition")
   @Test(timeout = 500)
   public void testSimpleRun() throws Exception {
     member = buildCohortMember();
@@ -160,7 +157,6 @@ public class TestCommitCohortMember {
    * Fail correctly on getting an external error while waiting for the prepared latch
    * @throws Exception on failure
    */
-  @Ignore("Disabled because broken due to composition")
   @Test(timeout = 1000)
   public void testFailOnExternalErrorDuringPrepareWait() throws Exception {
     final DistributedThreePhaseCommitErrorDispatcher dispatcher = new DistributedThreePhaseCommitErrorDispatcher();
@@ -185,7 +181,6 @@ public class TestCommitCohortMember {
    * Fail correctly on getting an external error while waiting for the commit allowed latch
    * @throws Exception on failure
    */
-  @Ignore("Disabled because broken due to composition")
   @Test(timeout = 1000)
   public void testFailOnExternalErrorDuringCommitAllowedLatchWait() throws Exception {
     final DistributedThreePhaseCommitErrorDispatcher dispatcher = new DistributedThreePhaseCommitErrorDispatcher();
@@ -211,7 +206,6 @@ public class TestCommitCohortMember {
    * commit notification on the controller. Everything is still correct, but just a little fuzzy.
    * @throws Exception on failure
    */
-  @Ignore("Disabled because broken due to composition")
   @Test(timeout = 1000)
   public void testFailOnExternalErrorDuringCommitFinishedLatchWait() throws Exception {
     final DistributedThreePhaseCommitErrorDispatcher dispatcher = new DistributedThreePhaseCommitErrorDispatcher();
@@ -279,7 +273,6 @@ public class TestCommitCohortMember {
    * commit notification on the controller. Everything is still correct, but just a little fuzzy.
    * @throws Exception on failure
    */
-  @Ignore("Disabled because broken due to composition")
   @Test(timeout = 1000)
   public void testFailOnInternalErrorDuringPrepare() throws Exception {
     final DistributedThreePhaseCommitErrorDispatcher dispatcher = new DistributedThreePhaseCommitErrorDispatcher();
@@ -300,7 +293,6 @@ public class TestCommitCohortMember {
       Mockito.any(RemoteFailureException.class));
   }
 
-  @Ignore("Disabled because broken due to composition")
   @Test(timeout = 1000)
   public void testFailOnInternalErrorDuringCommit() throws Exception {
     final DistributedThreePhaseCommitErrorDispatcher dispatcher = new DistributedThreePhaseCommitErrorDispatcher();
@@ -345,8 +337,7 @@ public class TestCommitCohortMember {
    * Fail correctly on getting an external error while waiting for the prepared latch
    * @throws Exception on failure
    */
-  @Ignore("Disabled because broken due to composition")
-  @Test(timeout = 100000)
+  @Test(timeout = 1000)
   public void testPropagateConnectionErrorBackToManager() throws Exception {
     // setup the commit and the spy
     final DistributedThreePhaseCommitErrorDispatcher dispatcher = new DistributedThreePhaseCommitErrorDispatcher();
