@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.protobuf.generated.ErrorHandlingProtos.RemoteFail
 import org.apache.hadoop.hbase.server.commit.ThreePhaseCommit;
 import org.apache.hadoop.hbase.server.commit.distributed.cohort.CohortMemberTaskBuilder;
 import org.apache.hadoop.hbase.server.commit.distributed.cohort.DistributedThreePhaseCommitCohortMember;
+import org.apache.hadoop.hbase.server.commit.distributed.coordinator.CoordinatorTask;
 import org.apache.hadoop.hbase.server.commit.distributed.coordinator.CoordinatorTaskBuilder;
 import org.apache.hadoop.hbase.server.commit.distributed.coordinator.DistributedThreePhaseCommitCoordinator;
 import org.apache.hadoop.hbase.server.commit.distributed.zookeeper.ZKTwoPhaseCommitCohortMemberController;
@@ -183,13 +184,13 @@ public class TestDistributedThreePhaseCommit {
       });
     
     // setup spying on the coordinator
-    ThreePhaseCommit coordinatorTask = Mockito.spy(coordinatorTaskBuilder.buildOperation(
+    CoordinatorTask coordinatorTask = Mockito.spy(coordinatorTaskBuilder.buildOperation(
       coordinator, opName, data, expected));
     Mockito.when(coordinatorTaskBuilder.buildOperation(coordinator, opName, data, expected))
         .thenReturn(coordinatorTask);
 
     // start running the operation
-    ThreePhaseCommit task = coordinator.kickOffCommit(opName, data, expected);
+    CoordinatorTask task = coordinator.kickOffCommit(opName, data, expected);
     assertEquals("Didn't mock coordinator task", coordinatorTask, task);
 
     // verify all things ran as expected
@@ -325,7 +326,7 @@ public class TestDistributedThreePhaseCommit {
     // setup spying on the coordinator
     DistributedThreePhaseCommitErrorDispatcher coordinatorTaskErrorMonitor = Mockito
         .spy(new DistributedThreePhaseCommitErrorDispatcher());
-    ThreePhaseCommit coordinatorTask = Mockito.spy(new ThreePhaseCommit(coordinator,
+    CoordinatorTask coordinatorTask = Mockito.spy(new CoordinatorTask(coordinator,
         coordinatorController, coordinatorTaskErrorMonitor, WAKE_FREQUENCY, TIMEOUT, TIMEOUT_INFO,
         opName, data, expected));
     Mockito.when(coordinatorTaskBuilder.buildOperation(coordinator, opName, data, expected))
@@ -347,7 +348,7 @@ public class TestDistributedThreePhaseCommit {
     // start running the operation
     // ----------------------------
 
-    ThreePhaseCommit task = coordinator.kickOffCommit(opName, data, expected);
+    CoordinatorTask task = coordinator.kickOffCommit(opName, data, expected);
     assertEquals("Didn't mock coordinator task", coordinatorTask, task);
 
     // wait for the task to complete

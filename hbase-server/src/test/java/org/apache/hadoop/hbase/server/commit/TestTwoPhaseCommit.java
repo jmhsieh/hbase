@@ -22,7 +22,6 @@ import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitExcept
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
 import org.apache.hadoop.hbase.server.errorhandling.impl.ExceptionSnare;
 import org.junit.After;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
@@ -67,14 +66,11 @@ public class TestTwoPhaseCommit {
     Mockito.verifyZeroInteractions(listener);
   }
 
-  @Ignore
   @Test(timeout = 500)
   public void testMultipleLatchCounts() throws Exception {
     // now do a test with multiple counts for each latch
-    final ThreePhaseCommit op = null;
-    // TODO Repair test
-    //    final ThreePhaseCommit op = Mockito.spy(new CheckableTwoPhaseCommit(monitor, listener,
-//        wakeFrequency, 2, 2, 2, 2));
+    final ThreePhaseCommit op = Mockito.spy(new CheckableTwoPhaseCommit(monitor, listener,
+        wakeFrequency, 2, 2, 2, 2));
     // count down the prepared latch in the operation
     Mockito.doAnswer(new Answer<Void>() {
 

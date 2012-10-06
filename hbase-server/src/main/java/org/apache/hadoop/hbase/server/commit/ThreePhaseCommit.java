@@ -17,9 +17,6 @@
  */
 package org.apache.hadoop.hbase.server.commit;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 
@@ -30,16 +27,11 @@ import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.hbase.protobuf.generated.DistributedCommitProtos.CommitPhase;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedCommitException;
 import org.apache.hadoop.hbase.server.commit.distributed.DistributedErrorListener;
-import org.apache.hadoop.hbase.server.commit.distributed.DistributedThreePhaseCommitErrorDispatcher;
-import org.apache.hadoop.hbase.server.commit.distributed.controller.DistributedCommitCoordinatorController;
-import org.apache.hadoop.hbase.server.commit.distributed.coordinator.DistributedThreePhaseCommitCoordinator;
 import org.apache.hadoop.hbase.server.errorhandling.ExceptionCheckable;
 import org.apache.hadoop.hbase.server.errorhandling.OperationAttemptTimer;
 import org.apache.hadoop.hbase.server.errorhandling.exception.OperationAttemptTimeoutException;
 import org.apache.hadoop.hbase.server.errorhandling.impl.ExceptionSnare;
 import org.apache.hadoop.hbase.util.Threads;
-
-import com.google.common.collect.Lists;
 
 /**
  * A two-phase commit that enforces a time-limit on the operation. If the time limit expires before
@@ -54,7 +46,7 @@ import com.google.common.collect.Lists;
  */
 @InterfaceAudience.Public
 @InterfaceStability.Evolving
-public class ThreePhaseCommit implements Callable<Void>, Runnable { 
+public abstract class ThreePhaseCommit implements Callable<Void>, Runnable { 
   /** latch counted down when the prepared phase completes */
   private final CountDownLatch preparedLatch;
   /** waited on before allowing the commit phase to proceed */
@@ -75,107 +67,66 @@ public class ThreePhaseCommit implements Callable<Void>, Runnable {
   private static final Log LOG = LogFactory.getLog(ThreePhaseCommit.class);
   protected final OperationAttemptTimer timer;
 
-  /** lock to prevent nodes from preparing and then committing before we can track them */
-  private Object joinBarrierLock = new Object();
-  private final DistributedCommitCoordinatorController controller;
-  private final List<String> prepareNodes;
-  private final List<String> commitingNodes;
-  private CountDownLatch allServersPreparedOperation;
-  private CountDownLatch allServersCompletedOperation;
-  private String opName;
-  private byte[] data;
-
-  private DistributedThreePhaseCommitCoordinator parent;
-  
   /**
-   * {@link ThreePhaseCommit} operation run by a {@link DistributedThreePhaseCommitCoordinator} for
-   * a given operation
-   * @param parent parent coordinator to call back to for general errors (e.g.
-   *          {@link DistributedThreePhaseCommitCoordinator#controllerConnectionFailure(String, IOException)}
-   *          ).
-   * @param controller coordinator controller to update with progress
-   * @param monitor error monitor to check for errors to the operation
-   * @param wakeFreq frequency to check for errors while waiting
-   * @param timeout amount of time to allow the operation to run
-   * @param timeoutInfo information to pass along to the error monitor if there is a timeout
-   * @param opName name of the operation to run
-   * @param data information associated with the operation
-   * @param expectedPrepared names of the expected cohort members
-   */
-  public ThreePhaseCommit(DistributedThreePhaseCommitCoordinator parent,
-      DistributedCommitCoordinatorController controller,
-      DistributedThreePhaseCommitErrorDispatcher monitor, long wakeFreq, long timeout,
-      Object[] timeoutInfo, String opName, byte[] data, List<String> expectedPrepared) {
-    this.errorMonitor = monitor;
-    this.errorListener = monitor;
-    this.wakeFrequency = wakeFreq;
-    this.preparedLatch = new CountDownLatch(1);
-    this.allowCommitLatch = new CountDownLatch(expectedPrepared.size());
-    this.commitFinishLatch = new CountDownLatch(expectedPrepared.size());
-    this.completedLatch = new CountDownLatch(1);
-    this.timer = setupTimer(errorListener, timeout);
-
-    this.parent = parent;
-    this.controller = controller;
-    this.prepareNodes = new ArrayList<String>(expectedPrepared);
-    this.commitingNodes = new ArrayList<String>(prepareNodes.size());
-
-    this.opName = opName;
-    this.data = data;
-
-    // block the commit phase until all the servers prepare
-    this.allServersPreparedOperation = this.getAllowCommitLatch();
-    // allow interested watchers to block until we are done with the commit phase
-    this.allServersCompletedOperation = this.getCommitFinishedLatch();
-  }
-
-  /**
-   * Testing only
-   * @param monitor
-   * @param errorListener
-   * @param wakeFrequency
+   * Constructor that has prepare, commit and finish latch counts of 1.
+   * @param monitor notified if there is an error in the commit
+   * @param errorListener listener to listen for errors to the running operation
+   * @param wakeFrequency frequency to wake to check if there is an error via the monitor (in
+   *          milliseconds).
    */
   public ThreePhaseCommit(ExceptionCheckable<DistributedCommitException> monitor, DistributedErrorListener errorListener,
       long wakeFrequency) {
     // Default to a very large timeout
+    this(monitor, errorListener, wakeFrequency, 1, 1, 1, 1, Integer.MAX_VALUE);
+  }
+
+  
+  public ThreePhaseCommit(ExceptionCheckable<DistributedCommitException> monitor, DistributedErrorListener errorListener,
+      long wakeFrequency, int numPrepare,
+      int numAllowCommit, int numCommitted, int numCompleted, long timeout) {
     this.errorMonitor = monitor;
     this.errorListener = errorListener;
     this.wakeFrequency = wakeFrequency;
-    this.preparedLatch = new CountDownLatch(1);
-    this.allowCommitLatch = new CountDownLatch(1);
-    this.commitFinishLatch = new CountDownLatch(1);
-    this.completedLatch = new CountDownLatch(1);
-    this.timer = setupTimer(errorListener, Integer.MAX_VALUE);
-
-    this.parent = null;
-    this.controller = null;
-    this.prepareNodes = new ArrayList<String>();
-    this.commitingNodes = new ArrayList<String>(prepareNodes.size());
-
-//    this.opName = opName;
-//    this.data = data;
-
-    // block the commit phase until all the servers prepare
-    this.allServersPreparedOperation = this.getAllowCommitLatch();
-    // allow interested watchers to block until we are done with the commit phase
-    this.allServersCompletedOperation = this.getCommitFinishedLatch();
- 
+    this.preparedLatch = new CountDownLatch(numPrepare);
+    this.allowCommitLatch = new CountDownLatch(numAllowCommit);
+    this.commitFinishLatch = new CountDownLatch(numCommitted);
+    this.completedLatch = new CountDownLatch(numCompleted);
+    this.timer = setupTimer(errorListener, timeout);
   }
 
-  // TEST ONLY
+  /**
+   * Create a Three-Phase Commit operation
+   * @param monitor error monitor to check for errors to the running operation
+   * @param errorListener error listener to listen for errors while running the task
+   * @param wakeFrequency frequency to check for errors while waiting for latches
+   */
   public ThreePhaseCommit(ExceptionCheckable<DistributedCommitException> monitor, DistributedErrorListener errorListener, long wakeFrequency,
       long timeout) {
     this(monitor, errorListener, wakeFrequency);
-    //    this.timer = setupTimer(errorListener, timeout);
+//    this.timer = setupTimer(errorListener, timeout);
   }
 
-//  // Test ONLY
-//  public ThreePhaseCommit(ExceptionCheckable<DistributedCommitException> monitor, DistributedErrorListener errorListener,
-//      long wakeFrequency, int numPrepare,
-//      int numAllowCommit, int numCommitted, int numCompleted, long timeout) {
-//    this(monitor, monitor, errorListener, numPrepare, numAllowCommit, numCommitted, numCompleted, timeout);
-//  }
-//  
+  /**
+   * Create a Three-Phase Commit operation
+   * @param numPrepare number of prepare latches (called when the prepare phase completes
+   *          successfully)
+   * @param numAllowCommit number of latches to wait on for the commit to proceed (blocks calls to
+   *          the commit phase)
+   * @param numCommitted number of commit completed latches should be established (called when the
+   *          commit phase completes)
+   * @param numCompleted number of completed latches to be established (called when everything has
+   *          run)
+   * @param monitor eror monitor to check for errors to the running operation
+   * @param errorListener listener to listen for any errors to the running operation
+   * @param wakeFrequency frequency to check for errors while waiting for latches
+   * @param timeout max amount of time to allow for the operation to run
+   */
+  public ThreePhaseCommit(int numPrepare, int numAllowCommit, int numCommitted, int numCompleted,
+      ExceptionCheckable<DistributedCommitException> monitor, DistributedErrorListener errorListener, long wakeFrequency, long timeout) {
+    this(monitor, errorListener, wakeFrequency, numPrepare, numAllowCommit, numCommitted,
+        numCompleted, timeout);
+  }
+
   /**
    * Setup the process timeout. The timer is started whenever {@link #call()} or {@link #run()} is
    * called.
@@ -196,7 +147,6 @@ public class ThreePhaseCommit implements Callable<Void>, Runnable {
     return new OperationAttemptTimer(passThroughMonitor, timeout);
   }
 
-  
   @Override
   public Void call() {
     LOG.debug("Starting three phase commit.");
@@ -228,6 +178,18 @@ public class ThreePhaseCommit implements Callable<Void>, Runnable {
   public ExceptionCheckable<DistributedCommitException> getErrorCheckable() {
     return this.errorMonitor;
   }
+
+  public abstract void prepare() throws DistributedCommitException;
+
+  public abstract void prepared(String node);
+
+  public abstract void commit() throws DistributedCommitException;
+
+  public abstract void committed(String node);
+
+  public abstract void cleanup(Exception e);
+
+  public abstract void finish();
 
   @SuppressWarnings("unchecked")
   public Void call2() {
@@ -292,87 +254,4 @@ public class ThreePhaseCommit implements Callable<Void>, Runnable {
   public void waitForLatch(CountDownLatch latch, String latchType) throws DistributedCommitException, InterruptedException {
     Threads.waitForLatch(latch, errorMonitor, wakeFrequency, latchType);
   }
-
-
-  public void prepare() throws DistributedCommitException {
-    // start the operation
-    LOG.debug("running the prepare phase, kicking off prepare phase on cohort.");
-    try {
-      // prepare the operation, cloning the list to avoid a concurrent modification from the
-      // controller setting the prepared nodes
-      controller.prepareOperation(opName, data, Lists.newArrayList(this.prepareNodes));
-    } catch (IOException e) {
-      parent.controllerConnectionFailure("Can't reach controller.", e);
-    } catch (IllegalArgumentException e) {
-      throw new DistributedCommitException(e, new byte[0]);
-    }
-  }
-
-  public void commit() throws DistributedCommitException {
-    try {
-      // run the commit operation on the cohort
-      controller.commitOperation(opName, Lists.newArrayList(this.commitingNodes));
-    } catch (IOException e) {
-      parent.controllerConnectionFailure("Can't reach controller.", e);
-    }
-
-    // then wait for the finish latch
-    try {
-      this.waitForLatch(this.allServersCompletedOperation, "cohort committed");
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new DistributedCommitException(e, new byte[0]);
-    }
-  }
-
-  /**
-   * Subclass hook for custom cleanup/rollback functionality - currently, a no-op.
-   */
-  public void cleanup(Exception e) {
-  }
-
-  public void finish() {
-    // remove ourselves from the running operations
-    LOG.debug("Finishing coordinator operation - removing self from list of running operations");
-    // then clear out the operation nodes
-    LOG.debug("Reseting operation!");
-    try {
-      controller.resetOperation(opName);
-    } catch (IOException e) {
-      parent.controllerConnectionFailure("Failed to reset operation:" + opName, e);
-    }
-  }
-
-  public void prepared(String node) {
-    LOG.debug("node: '" + node + "' joining prepared barrier for operation '" + opName
-        + "' on coordinator");
-    if (this.prepareNodes.contains(node)) {
-      synchronized (joinBarrierLock) {
-        if (this.prepareNodes.remove(node)) {
-          this.commitingNodes.add(node);
-          this.allServersPreparedOperation.countDown();
-        }
-      }
-      LOG.debug("Waiting on: " + allServersPreparedOperation
-          + " remaining nodes to prepare operation");
-    } else {
-      LOG.debug("Node " + node + " joined operation, but we weren't waiting on it to join.");
-    }
-  }
-
-  public void committed(String node) {
-    boolean removed = false;
-    synchronized (joinBarrierLock) {
-      removed = this.commitingNodes.remove(node);
-      this.allServersCompletedOperation.countDown();
-    }
-    if (removed) {
-      LOG.debug("Node: '" + node + "' committed, counting down latch");
-    } else {
-      LOG.warn("Node: '" + node + "' committed operation, but we weren't waiting on it to commit.");
-    }
-  }
-
-  
-  
 }
