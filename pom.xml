@@ -50,6 +50,7 @@
   <url>http://hbase.apache.org</url>
   <modules>
     <module>hbase-server</module>
+    <module>hbase-perf</module>
     <module>hbase-thrift</module>
     <module>hbase-shell</module>
     <module>hbase-protocol</module>
