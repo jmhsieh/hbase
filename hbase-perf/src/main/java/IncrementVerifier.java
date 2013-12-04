@@ -30,7 +30,7 @@ public class IncrementVerifier implements Tool {
 
   @Override
   public int run(String[] arg0) throws Exception {
-    HTable t = new HTable("test");
+    HTable t = new HTable(getConf(), "test");
     Scan s = new Scan();
     ResultScanner rs = t.getScanner(s);
 
@@ -41,7 +41,7 @@ public class IncrementVerifier implements Tool {
       NavigableMap<byte[], byte[]> cols = r.getFamilyMap(Bytes.toBytes("f"));
       for (Map.Entry<byte[], byte[]> e : cols.entrySet()) {
         long val = Bytes.toLong(e.getValue());
-        LOG.info(row + " fh:" + Bytes.toString(e.getKey()) + " " +  val);
+        LOG.info(row + " fh:" + Bytes.toString(e.getKey()) + " " + val);
         rowsum += val;
       }
       LOG.info("rowsum = " + rowsum);

@@ -12,6 +12,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.Durability;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.client.Increment;
@@ -76,7 +77,7 @@ public class IncrementBlaster implements Tool {
   }
 
   long val(Increment inc, byte[] col) {
-    NavigableMap<byte[], Long> colmap = inc.getFamilyMap().get("f".getBytes());
+    NavigableMap<byte[], Long> colmap = inc.getFamilyMapOfLongs().get("f".getBytes());
     if (colmap == null)
       return 0;
 
@@ -105,7 +106,7 @@ public class IncrementBlaster implements Tool {
           i++;
         }
       }
-      inc.setWriteToWAL(writeToWAL);
+      inc.setDurability(writeToWAL ? Durability.SYNC_WAL : Durability.SKIP_WAL);
 
       t.increment(inc);
     }
