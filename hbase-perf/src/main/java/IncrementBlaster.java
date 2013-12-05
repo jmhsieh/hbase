@@ -13,8 +13,8 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.Durability;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.util.Tool;
@@ -115,8 +115,7 @@ public class IncrementBlaster implements Tool {
 
   int runMultiThread(final int threads, final int rows, final int cols) throws IOException,
       InterruptedException {
-    LOG.info("Opening table @ 0 ");
-    final HTablePool pool = new HTablePool();
+    LOG.info("Opening table @ 0 ");    
     final CountDownLatch waiting = new CountDownLatch(threads), done = new CountDownLatch(threads);
     final int incPerThread = incrCount / threads;
 
@@ -128,7 +127,9 @@ public class IncrementBlaster implements Tool {
         public void run() {
           try {
             waiting.await();
-            doBatch(pool.getTable("test"), incPerThread, rows, cols);
+            HTable table = new HTable(getConf(), "test");
+            doBatch(table, incPerThread, rows, cols);
+            table.close();
           } catch (InterruptedException e1) {
             // TODO Auto-generated catch block
             e1.printStackTrace();
@@ -147,7 +148,6 @@ public class IncrementBlaster implements Tool {
     LOG.info("Done incrs   @ " + delta + "  x " + incrCount + " increments ( "
         + ((float) incrCount / delta * 1000) + " inc/s)" + " || " + threads + " threads, " + cols
         + " cols, " + rows + " rows, " + colPerIncr + " cols/incr rpc");
-    pool.close();
     delta = System.currentTimeMillis() - start;
     LOG.info("Closed       @ " + delta);
     return 0;
