@@ -85,8 +85,9 @@ public class IntegrationTestingUtility extends HBaseTestingUtility {
    */
   public void checkNodeCount(int numSlaves) throws Exception {
     HBaseCluster cluster = getHBaseClusterInterface();
-    if (cluster.getClusterStatus().getServers().size() < numSlaves) {
-      throw new Exception("Cluster does not have enough nodes:" + numSlaves);
+    int count = cluster.getClusterStatus().getServers().size();
+    if (count < numSlaves) {
+      throw new Exception("Cluster does not have enough nodes.  Expected " + numSlaves + ",  had " + count);
     }
   }
 
