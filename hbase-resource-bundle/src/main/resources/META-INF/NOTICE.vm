@@ -272,6 +272,15 @@ JRuby's licence.
 #if(${dep.artifactId.equals("jruby-complete")})
 #set($jruby=true)
 #end
+#if( ${dep.licenses.isEmpty()} )
+ERROR: This product includes ${dep.name} which has no licenses!
+Revert the change if invalid or if intentional add license info to sumpplemental-models.xml
+groupId:     ${dep.groupId}
+articfactId: ${dep.artifactId}
+packaging:   ${dep.packaging}
+version:     ${dep.version}
+url:         ${dep.url}
+#end
 #if( !(${dep.licenses[0].name.contains("BSD")} || ${dep.licenses[0].name.contains("MIT")}) )
 #if( !(${dep.licenses[0].name.equals("Public Domain")}) )
 #if( !(${dep.licenses[0].name.contains("Apache Software License, Version 2.0")}) )
