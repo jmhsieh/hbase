@@ -1230,7 +1230,7 @@ Copyright 2006 Envoi Solutions LLC
       </licenses>
     </project>
   </supplement>
-
+<!--
   <supplement>
     <project>
       <groupId>xerces</groupId>
@@ -1245,7 +1245,7 @@ Copyright 2006 Envoi Solutions LLC
       </licenses>
     </project>
   </supplement>
-
+-->
 
 <!-- Permissive licenses that need text in LICENSE -->
   <supplement>
